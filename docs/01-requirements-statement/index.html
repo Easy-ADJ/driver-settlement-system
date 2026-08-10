@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>요구사항 기술서 — 정산 서버</title>
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#16181d; --muted:#5c6270; --line:#e3e6ec;
+  --accent:#2f6f4f; --accent-soft:#e8f2ec; --warn:#8a5a10; --warn-soft:#fdf3e0;
+  --chip:#eef0f4; --shadow:0 1px 2px rgba(16,18,24,.05),0 6px 18px rgba(16,18,24,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+    --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+    --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+  --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+  --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Segoe UI",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 20px 80px}
+a{color:inherit}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:22px}
+.crumb a{text-decoration:none;border-bottom:1px solid var(--line)}
+.crumb a:hover{border-color:var(--accent);color:var(--accent)}
+header.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:30px}
+.kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 12px}
+h1{font-size:clamp(26px,4.2vw,36px);margin:14px 0 8px;letter-spacing:-.02em}
+.lede{font-size:16px;color:var(--muted);margin:0;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.meta span{font-size:12.5px;color:var(--muted);background:var(--chip);
+  border-radius:6px;padding:4px 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:24px;line-height:1.2;letter-spacing:-.02em}
+.stat small{color:var(--muted);font-size:12.5px}
+h2.sec{font-size:14px;text-transform:none;letter-spacing:.02em;color:var(--muted);
+  font-weight:700;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:18px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card .num{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.1em}
+.card h3{margin:6px 0 8px;font-size:17px;letter-spacing:-.01em}
+.card p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--chip);color:var(--muted);border-radius:5px;padding:3px 7px}
+.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.chip.key{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:10px;padding:16px 18px;margin:34px 0 0;font-size:14.5px;box-shadow:var(--shadow)}
+.note b{color:var(--warn)}
+nav.sib{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px}
+nav.sib a{font-size:13px;text-decoration:none;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+nav.sib a:hover{border-color:var(--accent);color:var(--accent)}
+nav.sib a[aria-current]{background:var(--accent-soft);color:var(--accent);
+  border-color:var(--accent);font-weight:600}
+footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumb"><a href="../README.md">📚 정산 서버 문서</a> › 산출물 1</div>
+
+<header class="hero">
+  <span class="kicker">산출물 1 / 6</span>
+  <h1>📄 요구사항 기술서</h1>
+  <p class="lede">무엇을 왜 만드는가. 시스템 경계·Actor·제약·가정을 서술형으로 정리한 문서다.
+     검증 가능한 항목으로 분해한 것은 <a href="../02-requirements-specification/index.html">요구사항 정의서</a>이고,
+     이 문서는 그 앞단의 <b>배경과 서술</b>에 해당한다.</p>
+  <div class="meta">
+    <span>담당자 · 허진수</span><span>작성일 · 2026-08-10</span>
+    <span>상태 · 초안</span><span>상위 출처 · service-spec.md §1~§3.4</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>10</b><small>문서 파일</small></div>
+  <div class="stat"><b>U1~U12</b><small>미확정 항목</small></div>
+  <div class="stat"><b>A1~A6</b><small>외부 의존 가정</small></div>
+  <div class="stat"><b>6</b><small>Actor</small></div>
+</div>
+
+<h2 class="sec">문서 구성 — 위에서 아래로 읽으면 된다</h2>
+<div class="grid">
+
+  <a class="card" href="./01-overview.md">
+    <div class="num">01</div>
+    <h3>문서 개요와 시스템 개요</h3>
+    <p>이 문서의 목적·범위·독자. 서버 3개가 하나의 DB를 공유하는 전체 구성도와 정산 서버가 하는 3가지 일(집계·기록·대사).</p>
+    <div class="chips"><span class="chip">§1 문서 개요</span><span class="chip">§2 시스템 개요</span><span class="chip key">아키텍처 다이어그램</span></div>
+  </a>
+
+  <a class="card" href="./02-problem.md">
+    <div class="num">02</div>
+    <h3>해결하려는 문제</h3>
+    <p>"계산이 틀렸다"가 아니라 <b>"틀렸는지 설명할 수 없다"</b>가 본질. 성공 기준을 설명 가능성·정합성 증명·재실행 안전성 셋으로 정의한다.</p>
+    <div class="chips"><span class="chip">§3</span><span class="chip key">프로젝트의 출발점</span></div>
+  </a>
+
+  <a class="card" href="./03-scope.md">
+    <div class="num">03</div>
+    <h3>시스템 경계</h3>
+    <p>In-Scope 7개 / Out-of-Scope 6개. 실제 송금은 범위 밖이고 <code>PAID</code>는 표시일 뿐이다. 남의 테이블 직접 조회 금지 규칙과 어겼을 때 벌어지는 일.</p>
+    <div class="chips"><span class="chip">§4</span><span class="chip key">⚠️ 경계 규칙</span><span class="chip">CST-02</span></div>
+  </a>
+
+  <a class="card" href="./04-actors.md">
+    <div class="num">04</div>
+    <h3>이해관계자 및 Actor</h3>
+    <p>배치 스케줄러·관리자·결제 서버·원장 서버·기사·운영팀. 기사는 시스템을 직접 쓰지 않지만 요구사항의 출발점이다.</p>
+    <div class="chips"><span class="chip">§5</span><span class="chip">Actor 6</span></div>
+  </a>
+
+  <a class="card" href="./05-functional-requirements.md">
+    <div class="num">05</div>
+    <h3>기능 요구 서술</h3>
+    <p>배치(집계·청크 커밋·중복 차단·재시작·추적 기록), 대사, 조회, 상태 관리를 문장으로 서술. ID는 정의서와 대응한다.</p>
+    <div class="chips"><span class="chip">§6</span><span class="chip">FR-B</span><span class="chip">FR-R</span><span class="chip">FR-Q</span><span class="chip">FR-S</span></div>
+  </a>
+
+  <a class="card" href="./06-non-functional-requirements.md">
+    <div class="num">06</div>
+    <h3>비기능 요구 서술</h3>
+    <p>재실행 안전성·추적성·타임아웃 3/5초·4xx 비재시도·금액 정밀도·로깅·가상 스레드. 커넥션 풀과 성능은 🚧.</p>
+    <div class="chips"><span class="chip">§7</span><span class="chip">NFR-01~09</span><span class="chip warn">🚧 2</span></div>
+  </a>
+
+  <a class="card" href="./07-constraints.md">
+    <div class="num">07</div>
+    <h3>제약 사항</h3>
+    <p>기술 스택 고정값, 코드·명명 규칙, 🔒 비밀정보 취급, 일정. 3개 서버가 같은 버전을 쓰며 정산 혼자 올리지 않는다.</p>
+    <div class="chips"><span class="chip">§8</span><span class="chip key">🔒 보안</span><span class="chip">일정</span></div>
+  </a>
+
+  <a class="card" href="./08-assumptions.md">
+    <div class="num">08</div>
+    <h3>가정 및 의존</h3>
+    <p>A1~A6. 결제·원장 API가 무엇을 주는지에 정산 구현이 통째로 달려 있다. A6(늦게 도착하는 결제)은 기획서에 없던 위험.</p>
+    <div class="chips"><span class="chip">§9</span><span class="chip key">A1~A4 선행 조건</span></div>
+  </a>
+
+  <a class="card" href="./09-open-issues.md">
+    <div class="num">09</div>
+    <h3>🚧 미확정 항목</h3>
+    <p>U1~U12를 선택지·트레이드오프·영향 범위와 함께 정리. <b>08.11 회의의 안건 목록이 이 표다.</b> U12는 이 문서를 쓰며 새로 발견한 공백.</p>
+    <div class="chips"><span class="chip">§10</span><span class="chip warn">🚧 U1~U12</span><span class="chip warn">U12 신규</span></div>
+  </a>
+
+  <a class="card" href="./10-glossary.md">
+    <div class="num">10</div>
+    <h3>용어 정의</h3>
+    <p>정산·대사·이중기입·분개·차변/대변·미지급금·멱등성·targetDate·청크·배치 상태 10개 용어.</p>
+    <div class="chips"><span class="chip">§11</span><span class="chip">용어 10</span></div>
+  </a>
+
+</div>
+
+<div class="note">
+  <b>🚧 이 문서에서 가장 급한 것</b><br>
+  <b>U12(금액 절사·반올림 규칙)</b> — 팀 문서에 없던 공백이다. 정산과 원장이 다른 규칙을 쓰면
+  <b>계산이 정상인데도 대사가 1원 단위로 실패한다.</b> 원장 담당자(이치헌)와 함께 정해야 한다.
+  그다음이 <b>U6(대사 실패 시 CONFIRMED 보류 여부)</b> — "대사 실패한 금액을 지급 대상으로 볼 것인가"를 정한다.
+</div>
+
+<nav class="sib">
+  <a href="./index.html" aria-current="page">1 · 요구사항 기술서</a>
+  <a href="../02-requirements-specification/index.html">2 · 요구사항 정의서</a>
+  <a href="../03-use-case-diagram/index.html">3 · 유스케이스</a>
+  <a href="../04-sequence-diagram/index.html">4 · 시퀀스</a>
+  <a href="../05-flow-chart/index.html">5 · 플로우 차트</a>
+  <a href="../06-class-diagram/index.html">6 · 클래스</a>
+</nav>
+
+<footer>EasyADJ 모빌리티팀 · 정산 서버(<code>driver-settlement-system</code>) · 카드를 누르면 해당 마크다운 파일이 열린다.</footer>
+
+</div>
+</body>
+</html>

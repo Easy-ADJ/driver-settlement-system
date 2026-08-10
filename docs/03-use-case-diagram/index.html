@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유스케이스 다이어그램 — 정산 서버</title>
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#16181d; --muted:#5c6270; --line:#e3e6ec;
+  --accent:#2f6f4f; --accent-soft:#e8f2ec; --warn:#8a5a10; --warn-soft:#fdf3e0;
+  --chip:#eef0f4; --shadow:0 1px 2px rgba(16,18,24,.05),0 6px 18px rgba(16,18,24,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+    --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+    --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+  --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+  --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Segoe UI",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 20px 80px}
+a{color:inherit}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:22px}
+.crumb a{text-decoration:none;border-bottom:1px solid var(--line)}
+.crumb a:hover{border-color:var(--accent);color:var(--accent)}
+header.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:30px}
+.kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 12px}
+h1{font-size:clamp(26px,4.2vw,36px);margin:14px 0 8px;letter-spacing:-.02em}
+.lede{font-size:16px;color:var(--muted);margin:0;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.meta span{font-size:12.5px;color:var(--muted);background:var(--chip);
+  border-radius:6px;padding:4px 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:24px;line-height:1.2;letter-spacing:-.02em}
+.stat small{color:var(--muted);font-size:12.5px}
+h2.sec{font-size:14px;letter-spacing:.02em;color:var(--muted);font-weight:700;margin:28px 0 14px}
+h2.sec:first-of-type{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:18px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card.pending{border-style:dashed}
+.card .num{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.1em}
+.card h3{margin:6px 0 8px;font-size:17px;letter-spacing:-.01em}
+.card p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--chip);color:var(--muted);border-radius:5px;padding:3px 7px}
+.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.chip.key{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:10px;padding:16px 18px;margin:34px 0 0;font-size:14.5px;box-shadow:var(--shadow)}
+.note b{color:var(--warn)}
+nav.sib{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px}
+nav.sib a{font-size:13px;text-decoration:none;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+nav.sib a:hover{border-color:var(--accent);color:var(--accent)}
+nav.sib a[aria-current]{background:var(--accent-soft);color:var(--accent);
+  border-color:var(--accent);font-weight:600}
+footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumb"><a href="../README.md">📚 정산 서버 문서</a> › 산출물 3</div>
+
+<header class="hero">
+  <span class="kicker">산출물 3 / 6</span>
+  <h1>🎭 유스케이스 다이어그램</h1>
+  <p class="lede">누가 이 시스템으로 무엇을 하는가. <code>UC-01</code>~<code>UC-07</code>을 Actor·사전조건·주 흐름·
+     <b>대안 및 예외 흐름</b>까지 명세했다. 예외 흐름이 이 문서의 실질적 내용이다 — 정상 흐름보다 그쪽이 설계를 결정한다.</p>
+  <div class="meta">
+    <span>대상 · driver-settlement-system</span><span>상위 문서 · 요구사항 정의서</span><span>상태 · 초안</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>9</b><small>문서 파일</small></div>
+  <div class="stat"><b>7</b><small>유스케이스</small></div>
+  <div class="stat"><b>5 / 2</b><small>확정 / 🚧 미확정</small></div>
+  <div class="stat"><b>15</b><small>대안·예외 흐름</small></div>
+</div>
+
+<h2 class="sec">개요</h2>
+<div class="grid">
+  <a class="card" href="./00-notation.md">
+    <div class="num">00</div>
+    <h3>표기 관례</h3>
+    <p>Mermaid에는 UML 유스케이스 전용 문법이 없다. 유스케이스는 스타디움 노드, Actor는 사각형, <code>&lt;&lt;include&gt;&gt;</code>는 점선으로 표현한다.</p>
+    <div class="chips"><span class="chip">§0</span></div>
+  </a>
+  <a class="card" href="./01-diagram.md">
+    <div class="num">01</div>
+    <h3>유스케이스 다이어그램</h3>
+    <p>전체 그림 1장과 읽는 법. <code>UC-01</code>이 <code>UC-04</code>·<code>UC-02</code>를 include하므로 배치를 돌리면 사전검사와 대사가 항상 함께 일어난다.</p>
+    <div class="chips"><span class="chip">§1</span><span class="chip key">전체 그림</span></div>
+  </a>
+</div>
+
+<h2 class="sec">유스케이스 명세 — 확정</h2>
+<div class="grid">
+  <a class="card" href="./02-uc-01-batch-execution.md">
+    <div class="num">UC-01</div>
+    <h3>🔁 일일 정산 배치 실행</h3>
+    <p>스케줄러 트리거 → 중복 검사 → RUNNING 생성 → 결제 조회 → 집계 → 항목 저장 → 대사 → CONFIRMED. 주 흐름 10단계.</p>
+    <div class="chips"><span class="chip key">중심 유스케이스</span><span class="chip">예외 A1~A6</span><span class="chip">FR-B-01~08</span></div>
+  </a>
+  <a class="card" href="./03-uc-02-reconciliation.md">
+    <div class="num">UC-02</div>
+    <h3>⚖️ 정산 대사 검증</h3>
+    <p>정산 항목 합계 vs 원장 미지급금 잔액. <b>B3(반올림 규칙 차이로 인한 1원 오탐)이 이 유스케이스의 최대 위험이다.</b></p>
+    <div class="chips"><span class="chip">예외 B1~B3</span><span class="chip">FR-R-01~04</span><span class="chip warn">🚧 U5·U6·U12</span></div>
+  </a>
+  <a class="card" href="./04-uc-03-settlement-query.md">
+    <div class="num">UC-03</div>
+    <h3>🔍 정산 내역 조회</h3>
+    <p>관리자가 기사 문의에 답하는 경로. <b>이 유스케이스가 존재하는 이유가 기사다</b> — 기사는 시스템을 직접 쓰지 않는다.</p>
+    <div class="chips"><span class="chip">예외 C1~C4</span><span class="chip">FR-Q-01·02</span></div>
+  </a>
+  <a class="card" href="./05-uc-04-duplicate-rejection.md">
+    <div class="num">UC-04</div>
+    <h3>🚫 중복 배치 실행 거부</h3>
+    <p>같은 날짜 두 번 정산해 지급액이 두 배 되는 것을 막는다. <b>D4 — 사전검사만으로는 동시 실행 경합을 막지 못한다.</b></p>
+    <div class="chips"><span class="chip">예외 D1~D4</span><span class="chip">FR-B-06</span><span class="chip warn">🚧 좀비 RUNNING</span></div>
+  </a>
+  <a class="card" href="./06-uc-05-failed-restart.md">
+    <div class="num">UC-05</div>
+    <h3>🔄 실패 배치 재시작</h3>
+    <p>Spring Batch 메타 테이블 기반으로 실패 지점부터 재시작. E2에서 <code>NFR-02</code>(항목 불변성)와의 긴장 관계를 짚는다.</p>
+    <div class="chips"><span class="chip">예외 E1·E2</span><span class="chip">FR-B-07</span></div>
+  </a>
+</div>
+
+<h2 class="sec">유스케이스 명세 — 🚧 미확정</h2>
+<div class="grid">
+  <a class="card pending" href="./07-uc-06-07-pending.md">
+    <div class="num">UC-06 · UC-07</div>
+    <h3>🚧 지급 완료 처리 · 내역서 생성</h3>
+    <p>UC-06은 U7(API 노출 여부)·U8(원장 지급 분개)이, UC-07은 U9(보관 위치)가 결정되지 않았다. 확정된 설계로 인용하지 않는다.</p>
+    <div class="chips"><span class="chip warn">🚧 U7·U8·U9</span><span class="chip">FR-S-02·03</span><span class="chip">FR-Q-03</span></div>
+  </a>
+  <a class="card" href="./08-actor-summary.md">
+    <div class="num">08</div>
+    <h3>👥 Actor별 유스케이스 요약</h3>
+    <p>스케줄러·관리자·결제 서버·원장 서버·시스템 내부가 각각 어떤 UC에 관여하는지 한 표로 본다.</p>
+    <div class="chips"><span class="chip">§3</span></div>
+  </a>
+</div>
+
+<div class="note">
+  <b>⚠️ 명세하면서 드러난 공백 3가지</b><br>
+  <b>UC-01 A4</b> "결제가 0건이어도 배치를 CONFIRMED로 남긴다" — "안 돌렸다"와 "돌렸는데 0건"은 구별돼야 한다.<br>
+  <b>UC-04 D3</b> 좀비 <code>RUNNING</code> — 서버가 배치 도중 죽으면 남는 레코드를 어떻게 볼지 미확정.<br>
+  <b>UC-05 E2</b> <code>FAILED</code> 배치의 항목을 폐기해도 되는가 — <code>NFR-02</code>와 충돌하는 지점.
+</div>
+
+<nav class="sib">
+  <a href="../01-requirements-statement/index.html">1 · 요구사항 기술서</a>
+  <a href="../02-requirements-specification/index.html">2 · 요구사항 정의서</a>
+  <a href="./index.html" aria-current="page">3 · 유스케이스</a>
+  <a href="../04-sequence-diagram/index.html">4 · 시퀀스</a>
+  <a href="../05-flow-chart/index.html">5 · 플로우 차트</a>
+  <a href="../06-class-diagram/index.html">6 · 클래스</a>
+</nav>
+
+<footer>EasyADJ 모빌리티팀 · 정산 서버(<code>driver-settlement-system</code>) · 카드를 누르면 해당 마크다운 파일이 열린다.</footer>
+
+</div>
+</body>
+</html>

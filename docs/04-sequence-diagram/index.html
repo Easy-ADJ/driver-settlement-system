@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시퀀스 다이어그램 — 정산 서버</title>
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#16181d; --muted:#5c6270; --line:#e3e6ec;
+  --accent:#2f6f4f; --accent-soft:#e8f2ec; --warn:#8a5a10; --warn-soft:#fdf3e0;
+  --chip:#eef0f4; --shadow:0 1px 2px rgba(16,18,24,.05),0 6px 18px rgba(16,18,24,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+    --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+    --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+  --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+  --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Segoe UI",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 20px 80px}
+a{color:inherit}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:22px}
+.crumb a{text-decoration:none;border-bottom:1px solid var(--line)}
+.crumb a:hover{border-color:var(--accent);color:var(--accent)}
+header.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:30px}
+.kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 12px}
+h1{font-size:clamp(26px,4.2vw,36px);margin:14px 0 8px;letter-spacing:-.02em}
+.lede{font-size:16px;color:var(--muted);margin:0;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.meta span{font-size:12.5px;color:var(--muted);background:var(--chip);
+  border-radius:6px;padding:4px 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:24px;line-height:1.2;letter-spacing:-.02em}
+.stat small{color:var(--muted);font-size:12.5px}
+h2.sec{font-size:14px;letter-spacing:.02em;color:var(--muted);font-weight:700;margin:28px 0 14px}
+h2.sec:first-of-type{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:18px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card.pending{border-style:dashed}
+.card .num{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.1em}
+.card h3{margin:6px 0 8px;font-size:17px;letter-spacing:-.01em}
+.card p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--chip);color:var(--muted);border-radius:5px;padding:3px 7px}
+.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.chip.key{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:10px;padding:16px 18px;margin:34px 0 0;font-size:14.5px;box-shadow:var(--shadow)}
+.note b{color:var(--warn)}
+nav.sib{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px}
+nav.sib a{font-size:13px;text-decoration:none;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+nav.sib a:hover{border-color:var(--accent);color:var(--accent)}
+nav.sib a[aria-current]{background:var(--accent-soft);color:var(--accent);
+  border-color:var(--accent);font-weight:600}
+footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumb"><a href="../README.md">📚 정산 서버 문서</a> › 산출물 4</div>
+
+<header class="hero">
+  <span class="kicker">산출물 4 / 6</span>
+  <h1>🔀 시퀀스 다이어그램</h1>
+  <p class="lede">누가 누구를 어떤 순서로 부르는가. <code>SD-01</code>~<code>SD-06</code>.
+     참여자 이름은 <a href="../06-class-diagram/index.html">클래스 다이어그램</a>의 클래스명과 일치하므로,
+     다이어그램을 그대로 구현 구조로 옮길 수 있다.</p>
+  <div class="meta">
+    <span>대상 · driver-settlement-system</span><span>상위 문서 · 정의서 · 유스케이스</span><span>상태 · 초안</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>7</b><small>문서 파일</small></div>
+  <div class="stat"><b>6</b><small>시퀀스 (정상 2 / 실패 3 / 🚧 1)</small></div>
+  <div class="stat"><b>14</b><small>참여자</small></div>
+  <div class="stat"><b>0</b><small>남의 테이블 직접 접근</small></div>
+</div>
+
+<h2 class="sec">개요</h2>
+<div class="grid">
+  <a class="card" href="./00-participants.md">
+    <div class="num">00</div>
+    <h3>등장 요소</h3>
+    <p>참여자 14개(내부 11 · 외부 3)의 역할 정의. <code>SettlementDB</code>는 정산 소유 테이블만이며, <code>payments</code>·<code>ledger_*</code>로 가는 화살표는 이 문서 어디에도 없다.</p>
+    <div class="chips"><span class="chip">§0</span><span class="chip key">먼저 읽을 것</span><span class="chip">CST-02</span></div>
+  </a>
+</div>
+
+<h2 class="sec">정상 흐름</h2>
+<div class="grid">
+  <a class="card" href="./01-sd-01-batch-normal-flow.md">
+    <div class="num">SD-01</div>
+    <h3>🔁 정산 배치 정상 흐름</h3>
+    <p>트리거부터 CONFIRMED까지 전 구간. 청크 커밋이 루프 <b>안</b>에, 대사는 루프가 끝난 뒤 <b>한 번</b>. RUNNING 레코드는 사전검사 통과 후에 만든다.</p>
+    <div class="chips"><span class="chip key">중심 시퀀스</span><span class="chip">UC-01</span><span class="chip">FR-B-01~05·08</span></div>
+  </a>
+  <a class="card" href="./05-sd-05-admin-query.md">
+    <div class="num">SD-05</div>
+    <h3>🔍 관리자 정산 내역 조회</h3>
+    <p>정상·형식오류·내역없음 3분기. JOIN은 정산 소유 테이블끼리만 하고 <code>trips</code>를 붙이지 않는다 — 필요하면 받은 쪽이 결제 서버에 묻는다.</p>
+    <div class="chips"><span class="chip">UC-03</span><span class="chip">FR-Q-01·02</span><span class="chip">NFR-05</span></div>
+  </a>
+</div>
+
+<h2 class="sec">실패·거부 흐름</h2>
+<div class="grid">
+  <a class="card" href="./02-sd-02-duplicate-rejection.md">
+    <div class="num">SD-02</div>
+    <h3>🚫 중복 실행 거부</h3>
+    <p>거부는 Job 시작 <b>전</b>에 일어나고 DB에 아무것도 쓰지 않는다. ⚠️ 이 사전검사는 동시 실행 경합을 막지 못한다.</p>
+    <div class="chips"><span class="chip">UC-04</span><span class="chip">FR-B-06</span><span class="chip warn">부분 UNIQUE 권고</span></div>
+  </a>
+  <a class="card" href="./03-sd-03-reconciliation.md">
+    <div class="num">SD-03</div>
+    <h3>⚖️ 대사 검증</h3>
+    <p>일치 / 불일치 / 원장 호출 실패 3분기. <b>"모르겠다"와 "틀렸다"는 다른 상황이므로 같은 처리로 묶지 않는다.</b></p>
+    <div class="chips"><span class="chip">UC-02</span><span class="chip">FR-R-01~04</span><span class="chip warn">🚧 U5·U6·Q3</span></div>
+  </a>
+  <a class="card" href="./04-sd-04-payment-service-failure.md">
+    <div class="num">SD-04</div>
+    <h3>💥 결제 서버 장애 시 Reader 실패</h3>
+    <p>5xx·타임아웃은 2회 재시도, 4xx는 즉시 실패. <b>서버 분리로 새로 생긴 실패 지점이다</b> — 단일 서버였다면 DB 조회로 끝날 일이었다.</p>
+    <div class="chips"><span class="chip">UC-01 A2·A3</span><span class="chip">NFR-03·04</span><span class="chip warn">🚧 U2</span></div>
+  </a>
+</div>
+
+<h2 class="sec">🚧 미확정</h2>
+<div class="grid">
+  <a class="card pending" href="./06-sd-06-payout-ledger-entry.md">
+    <div class="num">SD-06</div>
+    <h3>🚧 정산 확정 시 원장 지급 분개 기록</h3>
+    <p>U8을 "기록한다"로 택할 경우의 흐름. <b>택하는 순간 정산도 결제-원장과 같은 원자성 문제를 갖게 된다.</b> 기록하지 않기로 하면 이 다이어그램은 통째로 불필요해진다.</p>
+    <div class="chips"><span class="chip warn">🚧 U8</span><span class="chip">UC-06</span><span class="chip">IF-03</span></div>
+  </a>
+</div>
+
+<div class="note">
+  <b>⚠️ 이 문서가 짚는 최대 위험</b><br>
+  <b>SD-03의 두 번째 분기</b> — 절사·반올림 규칙(U12)이 원장과 다르면 <b>계산도 저장도 정상인데 대사만 상시 실패한다.</b>
+  원인 파악이 가장 어려운 유형이며, 원장 담당자와의 합의가 이 다이어그램의 선행 조건이다.
+</div>
+
+<nav class="sib">
+  <a href="../01-requirements-statement/index.html">1 · 요구사항 기술서</a>
+  <a href="../02-requirements-specification/index.html">2 · 요구사항 정의서</a>
+  <a href="../03-use-case-diagram/index.html">3 · 유스케이스</a>
+  <a href="./index.html" aria-current="page">4 · 시퀀스</a>
+  <a href="../05-flow-chart/index.html">5 · 플로우 차트</a>
+  <a href="../06-class-diagram/index.html">6 · 클래스</a>
+</nav>
+
+<footer>EasyADJ 모빌리티팀 · 정산 서버(<code>driver-settlement-system</code>) · 카드를 누르면 해당 마크다운 파일이 열린다.</footer>
+
+</div>
+</body>
+</html>
