@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>플로우 차트 — 정산 서버</title>
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#16181d; --muted:#5c6270; --line:#e3e6ec;
+  --accent:#2f6f4f; --accent-soft:#e8f2ec; --warn:#8a5a10; --warn-soft:#fdf3e0;
+  --chip:#eef0f4; --shadow:0 1px 2px rgba(16,18,24,.05),0 6px 18px rgba(16,18,24,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+    --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+    --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --ink:#e8eaee; --muted:#9aa2b1; --line:#2b3038;
+  --accent:#6dbd93; --accent-soft:#1e2c25; --warn:#e0b169; --warn-soft:#2c2519;
+  --chip:#252932; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Segoe UI",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 20px 80px}
+a{color:inherit}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:22px}
+.crumb a{text-decoration:none;border-bottom:1px solid var(--line)}
+.crumb a:hover{border-color:var(--accent);color:var(--accent)}
+header.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:30px}
+.kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 12px}
+h1{font-size:clamp(26px,4.2vw,36px);margin:14px 0 8px;letter-spacing:-.02em}
+.lede{font-size:16px;color:var(--muted);margin:0;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.meta span{font-size:12.5px;color:var(--muted);background:var(--chip);
+  border-radius:6px;padding:4px 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:24px;line-height:1.2;letter-spacing:-.02em}
+.stat small{color:var(--muted);font-size:12.5px}
+h2.sec{font-size:14px;letter-spacing:.02em;color:var(--muted);font-weight:700;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:18px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card .num{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.1em}
+.card h3{margin:6px 0 8px;font-size:17px;letter-spacing:-.01em}
+.card p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--chip);color:var(--muted);border-radius:5px;padding:3px 7px}
+.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.chip.key{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:10px;padding:16px 18px;margin:34px 0 0;font-size:14.5px;box-shadow:var(--shadow)}
+.note b{color:var(--warn)}
+nav.sib{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px}
+nav.sib a{font-size:13px;text-decoration:none;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+nav.sib a:hover{border-color:var(--accent);color:var(--accent)}
+nav.sib a[aria-current]{background:var(--accent-soft);color:var(--accent);
+  border-color:var(--accent);font-weight:600}
+footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="crumb"><a href="../README.md">📚 정산 서버 문서</a> › 산출물 5</div>
+
+<header class="hero">
+  <span class="kicker">산출물 5 / 6</span>
+  <h1>🧭 플로우 차트</h1>
+  <p class="lede"><a href="../04-sequence-diagram/index.html">시퀀스 다이어그램</a>이 "누가 누구를 부르는가"라면,
+     이 문서는 <b>"어떤 조건에서 어디로 가는가"</b>다. <code>FC-01</code>~<code>FC-04</code> —
+     배치 제어 흐름, 지급액 계산, 대사 판정, 상태 전이.</p>
+  <div class="meta">
+    <span>대상 · driver-settlement-system</span><span>상위 문서 · 정의서 · 유스케이스</span><span>상태 · 초안</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>4</b><small>문서 파일 (차트 4개)</small></div>
+  <div class="stat"><b>1</b><small>배치 흐름의 🚧 분기</small></div>
+  <div class="stat"><b>4</b><small>금지된 상태 전이</small></div>
+  <div class="stat"><b>3</b><small>배치 상태 + FAILED</small></div>
+</div>
+
+<h2 class="sec">차트 구성</h2>
+<div class="grid">
+
+  <a class="card" href="./01-fc-01-batch-control-flow.md">
+    <div class="num">FC-01</div>
+    <h3>🔁 정산 배치 Job 제어 흐름</h3>
+    <p>시작부터 종료까지 전 분기 — 중복 검사, 청크 루프, 롤백, 대사 결과에 따른 분기. <b>결제 0건이어도 대사·확정으로 진행한다</b>("안 돌렸다"와 구별하기 위해).</p>
+    <div class="chips"><span class="chip key">중심 차트</span><span class="chip">UC-01·04</span><span class="chip">FR-B-01~06</span><span class="chip warn">🚧 U6 분기</span></div>
+  </a>
+
+  <a class="card" href="./02-fc-02-payout-calculation.md">
+    <div class="num">FC-02</div>
+    <h3>💰 기사별 지급액 계산</h3>
+    <p><code>DriverSettlementProcessor</code> 내부 로직 전체. 필터 → 기사별 누적 → 수수료 20% → 지급액. 계산 예시 표에서 <b>3,333원의 80%가 왜 문제인지</b>가 드러난다.</p>
+    <div class="chips"><span class="chip">FR-B-03·08</span><span class="chip warn">⚠️ Q1 driverId</span><span class="chip warn">🚧 U12 반올림</span></div>
+  </a>
+
+  <a class="card" href="./03-fc-03-reconciliation-decision.md">
+    <div class="num">FC-03</div>
+    <h3>⚖️ 대사 판정</h3>
+    <p>"대사 불가(모르겠다)"와 "대사 불일치(틀렸다)"를 분리하고, <b>1원 단위 미세 차이를 별도 분기로 뒀다</b> — U12 미해결 동안 오탐의 주요 원인이기 때문.</p>
+    <div class="chips"><span class="chip">UC-02</span><span class="chip">FR-R-01~04</span><span class="chip warn">🚧 U5·U6</span></div>
+  </a>
+
+  <a class="card" href="./04-fc-04-state-transition.md">
+    <div class="num">FC-04</div>
+    <h3>🔀 정산 배치 상태 전이</h3>
+    <p>RUNNING → CONFIRMED → PAID, 실패 시 FAILED. <b>허용되지 않는 전이 4가지</b>를 표로 명시. <code>FAILED → RUNNING</code>만 되돌아가는 유일한 전이다.</p>
+    <div class="chips"><span class="chip">FR-S-01·02</span><span class="chip">FR-B-07</span><span class="chip warn">🚧 좀비 RUNNING</span></div>
+  </a>
+
+</div>
+
+<div class="note">
+  <b>🚧 임의로 채우지 않은 분기</b><br>
+  <b>FC-01의 대사 실패 분기(U6)</b>가 이 흐름의 유일한 미확정 지점이다.
+  "지급 대상 금액을 확정할 것인가"를 정하는 분기라 회의 전에 임의로 결정하지 않았다.<br>
+  <b>FC-03의 1원 차이 분기</b>는 U12가 확정되면 제거한다 — 그때까지만 필요한 진단용 분기다.
+</div>
+
+<nav class="sib">
+  <a href="../01-requirements-statement/index.html">1 · 요구사항 기술서</a>
+  <a href="../02-requirements-specification/index.html">2 · 요구사항 정의서</a>
+  <a href="../03-use-case-diagram/index.html">3 · 유스케이스</a>
+  <a href="../04-sequence-diagram/index.html">4 · 시퀀스</a>
+  <a href="./index.html" aria-current="page">5 · 플로우 차트</a>
+  <a href="../06-class-diagram/index.html">6 · 클래스</a>
+</nav>
+
+<footer>EasyADJ 모빌리티팀 · 정산 서버(<code>driver-settlement-system</code>) · 카드를 누르면 해당 마크다운 파일이 열린다.</footer>
+
+</div>
+</body>
+</html>
