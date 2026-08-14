@@ -92,8 +92,8 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
 <div class="stats">
   <div class="stat"><b>10</b><small>문서 파일</small></div>
   <div class="stat"><b>25+</b><small>설계 클래스</small></div>
-  <div class="stat"><b>5</b><small>의존 규칙</small></div>
-  <div class="stat"><b>10</b><small>구조에 영향 주는 🚧</small></div>
+  <div class="stat"><b>6</b><small>의존 규칙</small></div>
+  <div class="stat"><b>9</b><small>구조에 영향 주는 🚧</small></div>
 </div>
 
 <h2 class="sec">전체 구조</h2>
@@ -107,7 +107,7 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
   <a class="card" href="./01-layer-dependencies.md">
     <div class="num">01</div>
     <h3>🏗️ 계층 의존 관계</h3>
-    <p>의존 규칙 5가지. <b>규칙 4가 핵심 방어선</b> — <code>PaymentRepository</code>를 아예 만들지 않는 것이 <code>CST-02</code>를 코드 구조로 강제하는 유일한 방법이다.</p>
+    <p>의존 규칙 6가지. DB 분리로 규칙 4는 구성이 지켜주게 됐고, <b>방어선이 규칙 2로 옮겨갔다</b> — <code>client</code> 패키지만 HTTP를 알아야 API 변경의 파급이 갇힌다.</p>
     <div class="chips"><span class="chip">§1</span><span class="chip key">⚠️ 규칙 2·4</span><span class="chip">CST-02</span></div>
   </a>
 </div>
@@ -123,8 +123,8 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
   <a class="card" href="./03-batch-layer.md">
     <div class="num">03</div>
     <h3>⚙️ 배치 계층</h3>
-    <p>Job 구성 · Guard · Reader/Processor/Writer · Listener. 대사는 <code>afterJob</code>에서 한 번 트리거한다 — Step 안에 두면 청크마다 돌게 된다.</p>
-    <div class="chips"><span class="chip">§3</span><span class="chip">Spring Batch</span><span class="chip warn">🚧 U1·U3·U4·U12</span></div>
+    <p>Scheduler · Job 구성 · Guard · Reader/Processor/Writer · Listener. 트리거는 <code>@Scheduled</code>로 확정됐고, 대사는 <code>afterJob</code>에서 한 번 트리거한다 — Step 안에 두면 청크마다 돌게 된다.</p>
+    <div class="chips"><span class="chip">§3</span><span class="chip">Spring Batch</span><span class="chip">✅ @Scheduled</span><span class="chip warn">🚧 U3·U4·U12</span></div>
   </a>
   <a class="card" href="./04-query-reconciliation-layer.md">
     <div class="num">04</div>
@@ -157,20 +157,20 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
   <a class="card" href="./08-open-issues-impact.md">
     <div class="num">08</div>
     <h3>🚧 미확정이 구조에 미치는 영향</h3>
-    <p>U1~U12가 각각 어떤 클래스를 바꾸는지. <b>U1·U7·U8·U9는 "클래스가 생기느냐 마느냐"를 정한다</b> — 회의 전에 미리 만들면 지워야 할 코드가 된다.</p>
-    <div class="chips"><span class="chip">§8</span><span class="chip warn">🚧 10건</span></div>
+    <p>남은 U가 각각 어떤 클래스를 바꾸는지. <b>U7·U8·U9는 "클래스가 생기느냐 마느냐"를 정한다</b> — 회의 전에 미리 만들면 지워야 할 코드가 된다. U1·U11은 ✅ 닫혔다.</p>
+    <div class="chips"><span class="chip">§8</span><span class="chip warn">🚧 9건</span><span class="chip">✅ U1·U11</span></div>
   </a>
   <a class="card" href="./09-observations.md">
     <div class="num">09</div>
     <h3>🔎 관찰 메모</h3>
-    <p>구현 전 확인이 필요한 사실 4가지 — 미사용 Redis 의존성, MySQL 드라이버 잔존, 빈 <code>application.properties</code>, Testcontainers 설정. <b>변경하지 않고 기록만 한다.</b></p>
+    <p>구현 전 확인이 필요한 사실 5가지 — 미사용 Redis 의존성, MySQL 드라이버 잔존, 빈 <code>application.properties</code>, Testcontainers 설정, <code>Dockerfile</code> 부재. <b>변경하지 않고 기록만 한다.</b></p>
     <div class="chips"><span class="chip">§9</span><span class="chip">정리 후보</span></div>
   </a>
 </div>
 
 <div class="note">
   <b>🧷 구현 순서에 대한 함의</b><br>
-  <code>IF-01</code>~<code>IF-03</code>이 전부 🚧인 지금, <b>규칙 2(client 패키지만 HTTP를 안다)</b>가 실질적 보험이다.
+  결제·원장 응답 필드가 아직 🚧인 지금, <b>규칙 2(client 패키지만 HTTP를 안다)</b>가 실질적 보험이다. DB가 분리돼 우회로가 없으므로 더욱 그렇다.
   결제·원장 스펙이 어떻게 확정되든 고쳐야 할 파일이 <code>PaymentClient</code>·<code>LedgerClient</code> 둘로 한정된다.
   나머지 계층은 mock/stub으로 지금 바로 시작할 수 있다.
 </div>

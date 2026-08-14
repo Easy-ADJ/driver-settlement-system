@@ -6,8 +6,8 @@
 |---|---|
 | 대상 시스템 | 운전자 정산 시스템 (`driver-settlement-system`) |
 | 담당자 | 허진수 |
-| 작성일 | 2026-08-10 |
-| 상태 | 초안 — 🚧 표시 항목은 **08.11(화) 중간 회의**에서 확정 |
+| 작성일 | 2026-08-10 (2026-08-14 아키텍처 합의 반영) |
+| 상태 | 초안 — 🚧 표시 항목은 **08.15(토) 2차 회의**에서 확정 |
 | 상위 출처 | `core-documents/01-planning/service-spec.md` §1~§3.4 (확정 기획서) |
 
 ---
@@ -54,30 +54,43 @@
 ### 가. 전체 맥락 (배경)
 
 EasyADJ는 지역 기반 모빌리티 플랫폼 "D-Move"의 정산 파이프라인이다.<br>
-서버 3개가 도메인별로 나뉘어 있고, DB는 **Supabase 또는 AWS Aurora PostgreSQL 인스턴스 하나**를 공유한다.
+서버 3개가 도메인별로 나뉘어 있고, **DB도 시스템마다 인스턴스를 하나씩** 둔다 (`ARCH §1`). 각 서버는 자기 DB에만 접속한다.<br>
+서버 3개는 **AWS EC2 1대 위의 Docker 컨테이너 3개**로, 클라이언트는 **Vercel**에 배포한다 (`ARCH §5`).
+
+![팀 합의 시스템 아키텍처](../images/System-Architecture.png)
+
+> **위 그림이 팀이 합의한 전체 아키텍처다.** 아래 다이어그램은 같은 구조를 **정산 서버 관점**으로 다시 그린 것이며(정산 서버와 정산 DB를 강조), 둘이 다르면 [`architecture.md`](https://github.com/Easy-ADJ/core-documents/blob/main/02-design/architecture.md)가 맞다.
 
 ```mermaid
 flowchart TB
-    client["클라이언트<br/>승객 앱 · 관리자 콘솔"]
-    pay["결제 서버 (payment)<br/>김주엽<br/>trips, payments"]
-    led["원장 서버 (ledger)<br/>이치헌<br/>ledger_accounts, ledger_entries"]
-    set["정산 서버 (settlement)<br/>허진수<br/>settlement_batches, settlement_items"]
-    db[("Supabase PostgreSQL<br/>인스턴스 1개 공유")]
+    client["클라이언트 (Vercel)<br/>승객 앱 · 관리자 대시보드"]
+
+    subgraph ec2["AWS EC2 1대 · Docker 컨테이너 3개"]
+        pay["결제 서버 (payment)<br/>김주엽<br/>trips, payments"]
+        led["원장 서버 (ledger)<br/>이치헌<br/>ledger_accounts, ledger_entries"]
+        set["정산 서버 (settlement)<br/>허진수<br/>settlement_batches, settlement_items"]
+    end
+
+    payDb[("결제 DB")]
+    ledDb[("원장 DB")]
+    setDb[("정산 DB")]
 
     client -->|"REST (Idempotency-Key)"| pay
     client -->|REST| set
     pay -->|"POST /api/ledger/entries"| led
     set -->|"GET /api/payments?date="| pay
     set -->|"GET /api/ledger/accounts/{id}/balance"| led
-    pay -.->|JDBC| db
-    led -.->|JDBC| db
-    set -.->|JDBC| db
+    pay -.->|JDBC| payDb
+    led -.->|JDBC| ledDb
+    set -.->|JDBC| setDb
 
     classDef target fill:#2f6f4f,stroke:#1c4430,color:#ffffff,stroke-width:2px;
     classDef ext fill:#3a3f4b,stroke:#22252d,color:#e6e6e6;
-    class set target;
-    class pay,led,client ext;
+    class set,setDb target;
+    class pay,led,client,payDb,ledDb ext;
 ```
+
+> 🚧 DB 제품(**AWS Aurora** vs **Supabase**)은 아직 정해지지 않았다. 어느 쪽이든 PostgreSQL이고, 3개 시스템이 같은 제품을 쓴다.
 
 > **의존 방향은 결제 → 원장, 정산 → (결제, 원장)이다.** 정산 서버는 세 서버 중 의존이 가장 많다.<br>
 > 결제·원장 API가 확정되기 전에는 본격 구현이 불가능하므로, 개발 순서상 마지막에 몰릴 위험이 구조적으로 존재한다.
