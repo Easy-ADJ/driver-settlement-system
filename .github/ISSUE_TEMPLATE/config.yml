@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/Easy-ADJ/driver-payment-system/issues/new
     about: 결제 API를 고쳐야 하는 문제는 결제 레포에 등록하고 김주엽을 멘션합니다.
   - name: 📒 원장 서버에 요청할 것
-    url: https://github.com/Easy-ADJ/ledger-system/issues/new
+    url: https://github.com/Easy-ADJ/driver-ledger-system/issues/new
     about: 원장 API를 고쳐야 하는 문제는 원장 레포에 등록하고 이치헌을 멘션합니다.
