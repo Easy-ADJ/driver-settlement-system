@@ -6,7 +6,8 @@
 |---|---|
 | 담당자 | 허진수 |
 | 작성일 | 2026-08-10 |
-| 상태 | 초안 — 🚧 항목은 **08.11(화) 중간 회의** 후 갱신 |
+| 최종 갱신 | 2026-08-14 — DB 분리·EC2 1대 배포·Vercel 클라이언트·`@Scheduled` 트리거 반영 |
+| 상태 | 초안 — 남은 🚧 항목은 **08.15(토) 2차 회의** 후 갱신 |
 
 ---
 
@@ -16,12 +17,14 @@
 
 | # | 산출물 | 폴더 | 한눈에 보기 | 내용 |
 |---|---|---|---|---|
-| 1 | 요구사항 기술서 | [`01-requirements-statement/`](./01-requirements-statement/) | [index.html](./01-requirements-statement/index.html) | 무엇을 왜 만드는가. 시스템 경계, Actor, 제약, 가정, 🚧 미확정 목록(U1~U12), 용어 정의 |
+| 1 | 요구사항 기술서 | [`01-requirements-statement/`](./01-requirements-statement/) | [index.html](./01-requirements-statement/index.html) | 무엇을 왜 만드는가. 시스템 경계, Actor, 제약, 가정, 🚧 미확정 목록(U2~U9·U12)과 ✅ 확정된 항목(U1·U10·U11), 용어 정의 |
 | 2 | 요구사항 정의서 | [`02-requirements-specification/`](./02-requirements-specification/) | [index.html](./02-requirements-specification/index.html) | 1번을 `FR`/`NFR`/`IF`/`CST` ID로 분해. 수락 기준, 제공 API 명세, 데이터 요구사항, 에러 코드, **추적성 매트릭스** |
 | 3 | 유스케이스 다이어그램 | [`03-use-case-diagram/`](./03-use-case-diagram/) | [index.html](./03-use-case-diagram/index.html) | `UC-01`~`UC-07`. Actor별 유스케이스와 대안·예외 흐름 |
 | 4 | 시퀀스 다이어그램 | [`04-sequence-diagram/`](./04-sequence-diagram/) | [index.html](./04-sequence-diagram/index.html) | `SD-01`~`SD-06`. 시간 순 상호작용 |
 | 5 | 플로우 차트 | [`05-flow-chart/`](./05-flow-chart/) | [index.html](./05-flow-chart/index.html) | `FC-01`~`FC-04`. 배치 제어 흐름, 지급액 계산, 대사 판정, 상태 전이 |
 | 6 | 클래스 다이어그램 | [`06-class-diagram/`](./06-class-diagram/) | [index.html](./06-class-diagram/index.html) | 전 계층 클래스 구조와 의존 규칙 |
+
+`images/`는 6개 산출물이 함께 쓰는 이미지 폴더다. 팀 합의 아키텍처 그림([`System-Architecture.png`](./images/System-Architecture.png))이 여기 있고, [요구사항 기술서 §2](./01-requirements-statement/01-overview.md)에서 참조한다.
 
 **읽는 순서는 1 → 6이다.** 각 파일 상단·하단에 이전/다음 링크가 있어 순서대로 따라갈 수 있다.
 
@@ -41,16 +44,26 @@
 
 ## 🚧 다음에 해야 할 일
 
-### 08.11 회의 안건 (정산 서버 관련)
+### ✅ 이미 확정돼 반영된 것
 
-기술서 [🚧 미확정 항목](./01-requirements-statement/09-open-issues.md)의 U1~U12다. 그중 **금액 판단에 직접 영향을 주는 것**:
+| 결정 | 출처 | 반영된 곳 |
+|---|---|---|
+| **DB를 시스템별 인스턴스로 분리** | 08.11 회의 | `CST-08`, 기술서 §4.3 경계 규칙, `NFR-08`, 데이터 요구사항 |
+| **서버 3개 = EC2 1대의 Docker 컨테이너 3개** | 아키텍처 합의 | `CST-09`, `NFR-10`(호스트 자원 공유) |
+| **클라이언트 = Vercel** | 아키텍처 합의 | 기술서 §2 구성도 |
+| **배치 트리거 = Spring `@Scheduled`** (U1) | 아키텍처 합의 | `FR-B-09` 확정, `SettlementJobScheduler` 클래스 추가 |
+| **경계 넘는 FK 불가** (U10) / **테이블 소유권 강제 = DB 분리** (U11) | DB 분리의 귀결 | 데이터 요구사항, 클래스 다이어그램 §1 규칙 4 |
+
+### 08.15 회의 안건 (정산 서버 관련)
+
+기술서 [🚧 미확정 항목](./01-requirements-statement/09-open-issues.md)에 남은 것들이다. 그중 **금액 판단에 직접 영향을 주는 것**:
 
 | # | 항목 | 왜 급한가 |
 |---|---|---|
 | **U12** | 금액 절사·반올림 규칙 | 팀 문서에 없던 공백이다. 원장과 규칙이 다르면 **계산이 정상인데도 대사가 실패한다** |
 | **U6** | 대사 실패 시 `CONFIRMED` 보류 여부 | "대사 실패한 금액을 지급 대상으로 볼 것인가"를 정한다 |
 | U4 | 수수료율 20% 하드코딩 여부 | 계산 로직의 값 출처 |
-| U10 | 서비스 경계를 넘는 FK | 경계 규칙과 충돌 여부 |
+| U9 | 정산 내역서 보관 위치 | DB 제품(Aurora vs Supabase) 결정에 종속된다 |
 
 ### 결제·원장 담당자에게 확인할 것
 
@@ -64,7 +77,8 @@
 | Q4 | 잔액 부호 규약 | 이치헌 | 대사가 상시 불일치로 떨어진다 |
 | Q5 | 절사·반올림 규칙 (U12) | 이치헌 | 위와 동일 |
 
-> **Q1과 Q3이 정산 구현의 선행 조건이다.** 결제·원장 레포가 아직 생성되지 않았으므로, 그때까지는 mock/stub으로 개발한다.
+> **Q1과 Q3이 정산 구현의 선행 조건이다.** DB가 분리돼 테이블을 직접 읽는 우회로가 **물리적으로 사라졌으므로**, 이 답이 없으면 정산은 구현할 수 없다.<br/>
+> 결제·원장 레포는 생성됐으나 API가 확정되기 전까지는 mock/stub으로 개발한다.
 
 ### 회의 후 갱신 절차
 

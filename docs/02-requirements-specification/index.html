@@ -89,8 +89,8 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
 <div class="stats">
   <div class="stat"><b>9</b><small>문서 파일</small></div>
   <div class="stat"><b>23</b><small>기능 요구사항 (FR)</small></div>
-  <div class="stat"><b>9 / 8</b><small>비기능 / 제약</small></div>
-  <div class="stat"><b>11</b><small>🚧 미확정 항목</small></div>
+  <div class="stat"><b>10 / 9</b><small>비기능 / 제약</small></div>
+  <div class="stat"><b>10</b><small>🚧 미확정 항목</small></div>
 </div>
 
 <h2 class="sec">문서 구성</h2>
@@ -135,7 +135,7 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
     <div class="num">05</div>
     <h3>데이터 요구사항</h3>
     <p><code>settlement_batches</code>·<code>settlement_items</code> 컬럼 정의와 제안 컬럼. <code>trip_ids</code> 저장 방식 3안 비교, 부분 UNIQUE 인덱스 권고.</p>
-    <div class="chips"><span class="chip">§6</span><span class="chip">테이블 2 + Batch 메타</span><span class="chip warn">🚧 U10</span></div>
+    <div class="chips"><span class="chip">§6</span><span class="chip">테이블 2 + Batch 메타</span><span class="chip warn">🚧 trip_ids 저장 방식</span></div>
   </a>
 
   <a class="card" href="./06-error-codes.md">
@@ -148,7 +148,7 @@ footer{margin-top:34px;font-size:12.5px;color:var(--muted)}
   <a class="card" href="./07-constraints.md">
     <div class="num">07</div>
     <h3>제약 사항</h3>
-    <p>스택 고정·타 서비스 테이블 접근 금지·환경변수 주입·비밀정보 금지·명명·문서 우선 절차·DB 공유. 전부 팀 합의 사항이다.</p>
+    <p>스택 고정·타 서비스 테이블 접근 금지·환경변수 주입·비밀정보 금지·명명·문서 우선 절차·DB 인스턴스 분리·EC2 컨테이너 배포. 전부 팀 합의 사항이다.</p>
     <div class="chips"><span class="chip">§8</span><span class="chip">CST-01~08</span></div>
   </a>
 

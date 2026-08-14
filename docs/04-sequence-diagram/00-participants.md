@@ -6,7 +6,7 @@
 |---|---|
 | 대상 시스템 | 운전자 정산 시스템 (`driver-settlement-system`) |
 | 상위 문서 | [요구사항 정의서](../02-requirements-specification/index.html) · [유스케이스 다이어그램](../03-use-case-diagram/index.html) |
-| 상태 | 초안 — 🚧 흐름은 **08.11(화) 중간 회의** 후 확정 |
+| 상태 | 초안 — 🚧 흐름은 **08.15(토) 2차 회의** 후 확정 |
 
 ---
 
@@ -14,7 +14,7 @@
 
 | 참여자 | 종류 | 역할 |
 |---|---|---|
-| `Scheduler` | 외부 | Job 트리거 (🚧 방식 미확정 — U1) |
+| `Scheduler` | 내부 | `SettlementJobScheduler` — Spring `@Scheduled`로 Job 트리거 (`FR-B-09`) |
 | `Job` | 내부 | `DailySettlementJobConfig`가 구성한 Spring Batch Job |
 | `Guard` | 내부 | `DuplicateBatchGuard` — 중복 실행 사전검사 |
 | `Reader` | 내부 | `PaymentItemReader` |
@@ -25,11 +25,11 @@
 | `LedClient` | 내부 | `LedgerClient` — 원장 서버 호출 전담 |
 | `Controller` | 내부 | `SettlementController` |
 | `QueryService` | 내부 | `SettlementQueryService` |
-| `SettlementDB` | 내부 | 정산 소유 테이블 — `settlement_batches`, `settlement_items`, Batch 메타 |
+| `SettlementDB` | 내부 | **정산 DB 인스턴스** — `settlement_batches`, `settlement_items`, Batch 메타 |
 | `PaymentSvc` | 외부 | 결제 서버 |
 | `LedgerSvc` | 외부 | 원장 서버 |
 
-> **`SettlementDB`는 정산 소유 테이블만이다.** `payments`·`ledger_*`로 가는 화살표는 이 문서 어디에도 없다 — 반드시 `PayClient`/`LedClient`를 거쳐 외부 서버로 간다 (`CST-02`).
+> **`SettlementDB`는 정산 DB 인스턴스 하나다.** `payments`·`ledger_*`는 **다른 인스턴스에 있으므로** 이 문서에 그 화살표가 없는 것이 아니라 그릴 수가 없다. 반드시 `PayClient`/`LedClient`를 거쳐 외부 서버로 간다 (`CST-02`, `ARCH §1`).
 
 ---
 

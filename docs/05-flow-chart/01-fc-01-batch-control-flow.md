@@ -6,7 +6,7 @@
 |---|---|
 | 대상 시스템 | 운전자 정산 시스템 (`driver-settlement-system`) |
 | 상위 문서 | [요구사항 정의서](../02-requirements-specification/index.html) · [유스케이스 다이어그램](../03-use-case-diagram/index.html) |
-| 상태 | 초안 — 🚧 분기는 **08.11(화) 중간 회의** 후 확정 |
+| 상태 | 초안 — 🚧 분기는 **08.15(토) 2차 회의** 후 확정 |
 
 [시퀀스 다이어그램](../04-sequence-diagram/index.html)이 "누가 누구를 부르는가"를 보여준다면, 이 문서는 **"어떤 조건에서 어디로 가는가"** 를 보여준다.
 
