@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 문서·프로젝트 구조 관련 이슈
+    url: https://github.com/Easy-ADJ/core-documents/issues/new/choose
+    about: 설계 문서·컨벤션·폴더 구조 문제는 core-documents 레포에 등록합니다.
+  - name: 💳 결제 서버에 요청할 것
+    url: https://github.com/Easy-ADJ/driver-payment-system/issues/new
+    about: 결제 API를 고쳐야 하는 문제는 결제 레포에 등록하고 김주엽을 멘션합니다.
+  - name: 📒 원장 서버에 요청할 것
+    url: https://github.com/Easy-ADJ/ledger-system/issues/new
+    about: 원장 API를 고쳐야 하는 문제는 원장 레포에 등록하고 이치헌을 멘션합니다.

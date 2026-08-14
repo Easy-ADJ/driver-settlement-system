@@ -1,0 +1,43 @@
+name: ❓ 논의
+description: 혼자 정하기 어려워 팀 결정이 필요한 것
+title: "[정산] "
+labels: ["question"]
+body:
+  - type: textarea
+    id: topic
+    attributes:
+      label: 논점
+      description: 무엇을 정해야 하는지 한두 문장으로 적습니다.
+      placeholder: 대사 실패 시 정산을 CONFIRMED로 올릴지 보류할지 정해야 한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: 선택지와 트레이드오프
+      description: 고를 수 있는 안과 각각의 대가를 적습니다. 선택지 없이 "어떻게 할까요"만 있으면 논의가 겉돕니다.
+      placeholder: |
+        | | (A) 보류 | (B) 확정 후 경고 |
+        |---|---|---|
+        | 안전성 | 틀린 지급을 막음 | 틀린 금액이 지급될 수 있음 |
+        | 운영 부담 | 사람이 매번 개입 | 자동 진행 |
+    validations:
+      required: true
+
+  - type: textarea
+    id: deadline
+    attributes:
+      label: 언제까지 정해야 하나
+      description: 이 결정이 늦으면 무엇이 막히는지 적습니다.
+      placeholder: 대사 로직 구현 전까지. 08.15 회의 안건으로 올리면 좋겠다.
+    validations:
+      required: false
+
+  - type: input
+    id: affected
+    attributes:
+      label: 함께 정해야 할 사람
+      placeholder: "@김주엽 @이치헌"
+    validations:
+      required: false

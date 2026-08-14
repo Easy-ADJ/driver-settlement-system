@@ -1,0 +1,79 @@
+name: 🔗 계약 변경
+description: 서버 간 API 시그니처·필드·에러 코드를 바꿔야 할 때
+title: "[정산] "
+labels: ["contract"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ **혼자 결정할 수 없는 이슈입니다.**
+        > 상대는 문서를 보고 개발 중이므로, 코드보다 문서와 합의가 먼저입니다.
+        > 절차: [service-contracts.md §3](https://github.com/Easy-ADJ/core-documents/blob/main/02-design/service-contracts.md#3-계약-변경-절차)
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을
+      description: 바꾸려는 API와 변경 내용을 한두 문장으로 요약합니다.
+      placeholder: "GET /api/payments?date= 응답에 driverId를 추가한다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜
+      description: 지금 계약으로는 무엇이 안 되는지 적습니다.
+      placeholder: 정산 배치가 기사별로 집계해야 하는데 응답에 기사 식별자가 없어 매 건 추가 조회가 필요하다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: before
+    attributes:
+      label: 변경 전
+      description: 현재 요청·응답 형태를 그대로 붙입니다.
+      render: json
+      placeholder: |
+        {
+          "paymentId": "...",
+          "tripId": "...",
+          "amount": "12000"
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: after
+    attributes:
+      label: 변경 후
+      description: 바꾸려는 형태를 붙입니다. 말로만 설명하면 상대가 다르게 이해합니다.
+      render: json
+      placeholder: |
+        {
+          "paymentId": "...",
+          "tripId": "...",
+          "driverId": "...",
+          "amount": "12000"
+        }
+    validations:
+      required: true
+
+  - type: input
+    id: consumers
+    attributes:
+      label: 영향받는 담당자
+      description: 이 API를 호출하는 사람을 모두 멘션합니다. ([호출 관계](https://github.com/Easy-ADJ/core-documents/blob/main/02-design/service-contracts.md#1-호출-관계))
+      placeholder: "@김주엽 @이치헌"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: close-condition
+    attributes:
+      label: close 조건
+      description: 아래가 끝나야 이 이슈를 닫을 수 있습니다.
+      options:
+        - label: "`service-contracts.md` 갱신"
+        - label: "해당 `services/*.md` 갱신"
+        - label: "구현 반영"

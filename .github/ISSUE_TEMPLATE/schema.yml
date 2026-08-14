@@ -1,0 +1,82 @@
+name: 🗄️ 스키마 변경
+description: DB 테이블 구조를 바꿔야 할 때
+title: "[정산] "
+labels: ["schema"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ DB는 시스템별로 분리되어 있지만, 스키마 변경은 **그 테이블을 노출하는 API 응답을 바꾸므로** 상대에게 영향이 갑니다.
+        > 절차: [service-contracts.md §3](https://github.com/Easy-ADJ/core-documents/blob/main/02-design/service-contracts.md#3-계약-변경-절차)
+
+  - type: input
+    id: table
+    attributes:
+      label: 대상 테이블
+      placeholder: settlement_items
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜
+      description: 지금 스키마로는 무엇이 안 되는지 적습니다.
+      placeholder: 대사 실패 시 사유를 남길 곳이 없어 원인 추적이 안 된다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: before
+    attributes:
+      label: 변경 전
+      description: 현재 컬럼 정의를 붙입니다.
+      render: sql
+      placeholder: |
+        settlement_items (
+          id            BIGINT PRIMARY KEY,
+          driver_id     VARCHAR(64) NOT NULL,
+          amount        NUMERIC(15,0) NOT NULL
+        )
+    validations:
+      required: true
+
+  - type: textarea
+    id: after
+    attributes:
+      label: 변경 후 (DDL)
+      description: 실제로 실행할 DDL을 적습니다.
+      render: sql
+      placeholder: |
+        ALTER TABLE settlement_items
+          ADD COLUMN reconcile_note VARCHAR(255) NULL;
+    validations:
+      required: true
+
+  - type: textarea
+    id: api-impact
+    attributes:
+      label: 영향받는 API
+      description: 이 테이블을 노출하는 API가 있으면 어떻게 바뀌는지 적습니다. 없으면 "없음"이라고 적습니다.
+      placeholder: "GET /api/settlements 응답에 reconcileNote 필드가 추가된다."
+    validations:
+      required: true
+
+  - type: input
+    id: affected
+    attributes:
+      label: 영향받는 담당자
+      description: API가 바뀌면 그 API를 쓰는 사람을 멘션합니다.
+      placeholder: "@이치헌"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: close-condition
+    attributes:
+      label: close 조건
+      description: 아래가 끝나야 이 이슈를 닫을 수 있습니다.
+      options:
+        - label: "`erd.md` 갱신"
+        - label: "API가 바뀌면 `service-contracts.md`·`services/*.md` 갱신"
+        - label: "마이그레이션 적용"
