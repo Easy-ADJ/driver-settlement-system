@@ -46,6 +46,6 @@ body:
     attributes:
       label: 막혀 있다면
       description: 기다리는 이슈가 있으면 적습니다. 적으면 `blocked` 라벨을 함께 붙여주세요.
-      placeholder: "blocked by Easy-ADJ/ledger-system#12"
+      placeholder: "blocked by Easy-ADJ/driver-ledger-system#12"
     validations:
       required: false
