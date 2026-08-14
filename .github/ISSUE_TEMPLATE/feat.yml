@@ -1,0 +1,51 @@
+name: 🛠️ 기능 구현
+description: 정산 서버에 새로 만들 기능
+title: "[정산] "
+labels: ["feat"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을
+      description: 만들 기능을 한두 문장으로 요약합니다.
+      placeholder: 일 단위 정산 배치의 ItemProcessor에 수수료 차감 로직을 추가한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜
+      description: 어떤 상황에서 필요해졌는지 적습니다. 나중에 이 이슈를 다시 볼 사람을 위한 맥락입니다.
+      placeholder: 기획서 §3.3에 수수료 20% 차감이 명시돼 있으나 현재 배치는 총액만 집계한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: 완료 조건
+      description: 무엇이 되면 이 이슈를 닫을 수 있는지 적습니다.
+      placeholder: |
+        - [ ] 기사별 집계액에서 수수료가 차감된다
+        - [ ] 차감 결과를 검증하는 테스트가 통과한다
+    validations:
+      required: false
+
+  - type: input
+    id: affected
+    attributes:
+      label: 영향받는 담당자
+      description: 다른 서버가 걸리면 담당자를 멘션합니다. 없으면 비워둡니다.
+      placeholder: "@김주엽 (결제 API 응답 형식에 의존)"
+    validations:
+      required: false
+
+  - type: input
+    id: blocked-by
+    attributes:
+      label: 막혀 있다면
+      description: 기다리는 이슈가 있으면 적습니다. 적으면 `blocked` 라벨을 함께 붙여주세요.
+      placeholder: "blocked by Easy-ADJ/ledger-system#12"
+    validations:
+      required: false
