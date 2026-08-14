@@ -16,7 +16,7 @@
 | `FR-B-06` | `UC-04` | `SD-02` | `FC-01` | `DuplicateBatchGuard`, `SettlementBatchRepository` |
 | `FR-B-07` | `UC-05` | — | `FC-04` | Spring Batch 메타 (프레임워크) |
 | `FR-B-08` | `UC-01`, `UC-03` | `SD-01`, `SD-05` | `FC-02` | `SettlementItem` (`tripIds`) |
-| `FR-B-09` 🚧 | `UC-01` | `SD-01` (트리거) | — | 🚧 |
+| `FR-B-09` | `UC-01` | `SD-01` (트리거) | — | `SettlementJobScheduler` |
 | `FR-B-10` 🚧 | `UC-01` | `SD-04` | `FC-01` | `PaymentClient` (재시도) |
 | `FR-B-11` 🚧 | `UC-01` | `SD-01` | — | `PaymentItemReader` |
 | `FR-B-12` 🚧 | `UC-01` | — | `FC-02` | `DriverSettlementProcessor` |
@@ -44,7 +44,7 @@
 
 - 확정 `FR` 전부가 최소 1개 `UC`에 대응한다
 - `FR-B-07`은 시퀀스 없이 `FC-04`(상태 전이)로만 표현한다 — Spring Batch가 제공하는 기능이라 우리 코드의 상호작용이 없다
-- `NFR-07`~`NFR-09`는 설정·목표치라 다이어그램 대응이 없다
+- `NFR-07`~`NFR-10`은 설정·배포 환경·목표치라 다이어그램 대응이 없다
 
 ---
 

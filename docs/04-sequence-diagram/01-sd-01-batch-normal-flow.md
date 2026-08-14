@@ -21,7 +21,7 @@ sequenceDiagram
     participant SettlementDB
 
     Scheduler->>Job: launch targetDate=2026-08-10
-    Note over Scheduler,Job: 🚧 트리거 방식 미확정 - EventBridge vs @Scheduled
+    Note over Scheduler,Job: @Scheduled로 정산 서버 내부에서 트리거 (FR-B-09)
 
     Job->>Guard: assertNotConfirmed targetDate
     Guard->>SettlementDB: findConfirmedByTargetDate

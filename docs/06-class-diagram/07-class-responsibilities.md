@@ -6,6 +6,7 @@
 
 | 클래스 | 책임 | 관련 |
 |---|---|---|
+| `SettlementJobScheduler` | 정해진 시각에 전일 `targetDate`로 Job을 실행만 한다. 중복 판정·상태 전이를 하지 않는다 | `FR-B-09`, `NFR-10` |
 | `DailySettlementJobConfig` | Job·Step 정의와 청크 크기. 비즈니스 로직을 담지 않는다 | `FR-B-01`, `FR-B-05` |
 | `DuplicateBatchGuard` | `targetDate`로 확정 배치를 조회해 Job 시작 여부를 판정 | `FR-B-06` |
 | `PaymentItemReader` | 결제 내역을 청크 분량씩 공급. 🚧 페이지네이션이 여기 들어온다 | `FR-B-02`, `FR-B-11` |
