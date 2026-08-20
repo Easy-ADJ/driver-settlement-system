@@ -118,17 +118,6 @@ public class DailySettlementJobConfig
     }
 
     /**
-     * 🚧 임시 — 수수료 차감 Processor가 들어오면 <b>이 빈을 지운다.</b>
-     *
-     * @return 아무것도 내보내지 않는 Processor
-     */
-    @Bean
-    public ItemProcessor<DriverUnpaid, Settlement> driverSettlementProcessor()
-    {
-        return unpaid -> null;
-    }
-
-    /**
      * 🚧 임시 — 정산 항목 저장 Writer가 들어오면 <b>이 빈을 지운다.</b>
      *
      * @return 아무것도 저장하지 않는 Writer
