@@ -32,11 +32,16 @@ import org.springframework.stereotype.Component;
 public class SettlementJobListener implements JobExecutionListener
 {
 
-    /** {@code ExecutionContext}에 배치 ID를 담는 키. Writer가 같은 키로 꺼낸다. */
-    static final String BATCH_ID_KEY = "batchId";
+    /**
+     * {@code ExecutionContext}에 배치 ID를 담는 키.
+     * <p>
+     * Processor와 실행 진입점이 같은 키로 꺼낸다. <b>문자열을 여러 곳에 적으면 오타 하나로
+     * 조용히 null이 되므로</b> 여기 하나만 두고 참조한다.
+     */
+    public static final String BATCH_ID_KEY = "batchId";
 
-    /** Job 파라미터에서 정산 대상 일자를 꺼내는 키. */
-    static final String TARGET_DATE_KEY = "targetDate";
+    /** Job 파라미터에서 정산 대상 일자를 꺼내는 키. 실행 진입점이 같은 키로 넣는다. */
+    public static final String TARGET_DATE_KEY = "targetDate";
 
     private static final Logger log = LoggerFactory.getLogger(SettlementJobListener.class);
 
