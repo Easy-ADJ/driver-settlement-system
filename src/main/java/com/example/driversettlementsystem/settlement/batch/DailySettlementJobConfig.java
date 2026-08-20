@@ -114,23 +114,6 @@ public class DailySettlementJobConfig
     }
 
     /**
-     * 🚧 임시 — 원장에서 미지급 기사를 읽는 실제 Reader가 들어오면 <b>이 빈을 지운다.</b>
-     * <p>
-     * {@code null}을 돌려주는 것은 Spring Batch에서 "읽을 것이 없다"는 뜻이라, Step은
-     * 아무것도 처리하지 않고 정상 종료한다.
-     * <p>
-     * 빈 이름을 실제 구현의 이름과 같게 뒀다. 지우는 것을 잊으면 <b>부팅이 실패해</b>
-     * 조용히 no-op이 선택되는 일이 없다.
-     *
-     * @return 항상 비어 있는 Reader
-     */
-    @Bean
-    public ItemReader<DriverUnpaid> unpaidDriverReader()
-    {
-        return () -> null;
-    }
-
-    /**
      * 🚧 임시 — 수수료 차감 Processor가 들어오면 <b>이 빈을 지운다.</b>
      *
      * @return 아무것도 내보내지 않는 Processor
