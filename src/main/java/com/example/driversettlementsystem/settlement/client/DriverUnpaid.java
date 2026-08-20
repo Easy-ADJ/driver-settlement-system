@@ -1,4 +1,4 @@
-package com.example.driversettlementsystem.settlement.batch;
+package com.example.driversettlementsystem.settlement.client;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -9,6 +9,9 @@ import java.time.Instant;
  * 원장 {@code GET /api/ledger/unpaid?date=} 응답의 {@code data[]} 한 줄에 대응한다.
  * <b>정산이 소유한 타입이지 원장의 DTO가 아니다</b> — 원장이 필드를 늘려도 여기는
  * 그대로 둔다.
+ * <p>
+ * <b>목록 응답이 금액까지 담고 있어 기사마다 되묻지 않는다.</b> ID만 받아 되물으면
+ * 기사 100명에 호출이 101번이 된다.
  * <p>
  * <b>처리 단위가 기사 1명인 것이 중요하다.</b> 결제 1건 단위로 읽으면 청크 경계가 한 기사
  * 한가운데 떨어져 같은 기사에게 정산이 두 줄 생길 수 있고, 그때 합계는 정확히 맞아서
