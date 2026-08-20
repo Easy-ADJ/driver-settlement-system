@@ -61,13 +61,17 @@ public class DailySettlementJobConfig
      *
      * @param jobRepository  Spring Batch 메타 저장소
      * @param settlementStep 읽기 → 가공 → 쓰기 Step
+     * @param listener       배치 레코드 생성과 상태 전이를 맡는다
      * @return 등록된 정산 Job
      */
     @Bean
-    public Job dailySettlementJob(JobRepository jobRepository, Step settlementStep)
+    public Job dailySettlementJob(JobRepository jobRepository,
+                                  Step settlementStep,
+                                  SettlementJobListener listener)
     {
         return new JobBuilder("dailySettlementJob", jobRepository)
                 .validator(targetDateValidator())
+                .listener(listener)
                 .start(settlementStep)
                 .build();
     }
