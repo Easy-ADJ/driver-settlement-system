@@ -1,5 +1,6 @@
 package com.example.driversettlementsystem.settlement.batch;
 
+import com.example.driversettlementsystem.settlement.client.DriverUnpaid;
 import com.example.driversettlementsystem.settlement.domain.Settlement;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
