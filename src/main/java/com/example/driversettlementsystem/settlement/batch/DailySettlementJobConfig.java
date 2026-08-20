@@ -32,8 +32,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  * </pre>
  * <p>
  * <b>Step이 구체 클래스가 아니라 {@code ItemReader}·{@code ItemProcessor}·
- * {@code ItemWriter} 인터페이스에 의존한다.</b> 아래 no-op 빈 3개는 임시이고, 실제 구현이
- * 들어올 때 각각 지운다. 그때 이 Step의 시그니처는 바뀌지 않는다.
+ * {@code ItemWriter} 인터페이스에 의존한다.</b> 골격을 먼저 세울 때 no-op 빈 3개를 여기
+ * 뒀고, 실제 구현이 들어올 때마다 하나씩 지웠다. <b>그동안 이 Step의 시그니처는 한 번도
+ * 바뀌지 않았다.</b>
  */
 @Configuration
 public class DailySettlementJobConfig
@@ -115,19 +116,6 @@ public class DailySettlementJobConfig
     private JobParametersValidator targetDateValidator()
     {
         return new DefaultJobParametersValidator(new String[] {TARGET_DATE_PARAMETER}, new String[] {});
-    }
-
-    /**
-     * 🚧 임시 — 정산 항목 저장 Writer가 들어오면 <b>이 빈을 지운다.</b>
-     *
-     * @return 아무것도 저장하지 않는 Writer
-     */
-    @Bean
-    public ItemWriter<Settlement> settlementWriter()
-    {
-        return chunk ->
-        {
-        };
     }
 
 }
