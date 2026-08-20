@@ -12,7 +12,7 @@
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `driverId` | string | 아니오 | 기사 ID. 생략하면 해당 일자 전체 기사 |
+| `driverId` | number | 아니오 | 기사 ID. 생략하면 해당 일자 전체 기사 |
 | `date` | string (`yyyy-MM-dd`) | 예 | 정산 대상 일자 (`targetDate`) |
 
 > 🚧 `date` 범위 조회(`from`/`to`)를 지원할지, `date` 단건만 받을지는 `FR-Q-04`와 함께 확정한다. 현재 팀 문서의 시그니처(`?driverId=&date=`)는 단건 기준이다.
@@ -21,25 +21,32 @@
 
 ```json
 {
-  "targetDate": "2026-08-10",
+  "targetDate": "2026-08-19",
   "batchStatus": "CONFIRMED",
   "reconciliationStatus": "MATCHED",
   "settlements": [
     {
-      "driverId": "driver-001",
+      "driverId": 1,
       "fareTotal": "20000",
       "feeAmount": "4000",
       "payoutAmount": "16000",
       "payoutStatus": "CONFIRMED",
-      "tripIds": ["trip-1001", "trip-1002"]
+      "payments": [
+        { "paymentId": 100, "amount": "15000", "approvedAt": "2026-08-19T14:30:00Z" },
+        { "paymentId": 101, "amount": "5000",  "approvedAt": "2026-08-19T18:00:00Z" }
+      ]
     }
   ]
 }
 ```
 
-- 금액은 모두 **문자열** (`NFR-05`)
-- `tripIds`가 `FR-B-08`의 추적성을 실현하는 필드다. 기사 문의에 답하는 데 실제로 쓰이는 값이므로 생략하지 않는다
+- **금액은 모두 문자열, ID는 숫자다** (`NFR-05`). 정밀도가 깨지는 것은 금액뿐이라 ID까지 문자열로 만들 이유가 없다
 - `fareTotal` - `feeAmount` = `payoutAmount`가 항상 성립한다. 계산 근거를 함께 노출해 "왜 이 금액인가"를 응답만으로 설명한다
+- `payments`가 `FR-B-08`의 추적성을 실현하는 필드다. 기사가 "이 금액이 왜 이렇게 나왔냐"고 물었을 때 답이 되는 단위이므로 **비어 있어도 생략하지 않는다**
+
+> 🔄 **`tripIds` → `payments` 로 바뀌었다.** `trips` 테이블이 ERD에서 사라지면서(#7) 정산 DB에는 운행 단위 근거가 남지 않는다.
+> 그 자리를 원장 `GET /api/ledger?driver_id=` 응답의 `paymentDetails`가 채운다 — 결제 건별 금액과 승인 시각이다.
+> 즉 **이 필드는 정산 DB가 아니라 원장에서 조회 시점에 채워진다.**
 
 **에러 응답**
 
