@@ -54,6 +54,17 @@ public class LedgerClient
     /** 상쇄의 반대편(현금 유출). 차변합과 대변합을 맞추기 위해 반드시 함께 보낸다. */
     static final String CREDIT = "CREDIT";
 
+    /**
+     * 기사 미지급금 계정에 걸리는 leg. <b>이 값이 붙은 leg만 원장이 기사 잔액에 반영한다.</b>
+     * <p>
+     * ⚠️ 빠뜨리면 원장이 두 leg 모두 {@code driver_id = null}로 저장해 <b>미지급금이 전혀
+     * 움직이지 않는다.</b> 요청은 201로 성공하고 분개도 쌓이는데 잔액만 그대로다.
+     */
+    static final String DRIVER_OWNER = "DRIVER";
+
+    /** 상대편(현금·수수료) leg. 기사 잔액에 잡히면 안 되므로 기사 쪽과 반드시 구분한다. */
+    static final String PLATFORM_OWNER = "PLATFORM";
+
     private final RestClient restClient;
 
     private final RetryTemplate retryTemplate;
@@ -220,6 +231,11 @@ public class LedgerClient
      * <b>차변과 대변을 함께 보낸다.</b> 원장이 차변합 = 대변합을 검증하므로 한쪽만 보내면
      * 거절된다. 미지급금을 줄이는 쪽이 차변이고, 반대편(현금 유출)이 대변이다.
      * <p>
+     * ⚠️ <b>{@code ownerType}이 어느 leg을 기사 잔액에 반영할지 정한다.</b> 원장은 두 leg에
+     * 같은 요청 값을 받으므로 이걸로 구분하지 않으면 <b>양쪽 다 기사에 달려 서로 상쇄되고
+     * 잔액이 0으로 고정된다.</b> 실제로 그 버그가 있었다
+     * (<a href="https://github.com/Easy-ADJ/driver-ledger-system/issues/7">ledger#7</a>).
+     * <p>
      * {@code paymentId}는 {@code null}이다 — 상쇄는 특정 결제 한 건이 아니라 <b>그날까지
      * 쌓인 미지급금 전체</b>를 대상으로 하기 때문이다.
      *
@@ -231,8 +247,8 @@ public class LedgerClient
     private static PayoutEntryRequest payoutRequest(String idempotencyKey, Long driverId, BigDecimal fareTotal)
     {
         return new PayoutEntryRequest(idempotencyKey, driverId, PAYOUT_ENTRY_TYPE, List.of(
-                new EntryDetail(DEBIT, fareTotal, null),
-                new EntryDetail(CREDIT, fareTotal, null)));
+                new EntryDetail(DEBIT, fareTotal, null, DRIVER_OWNER),
+                new EntryDetail(CREDIT, fareTotal, null, PLATFORM_OWNER)));
     }
 
     /**
@@ -312,10 +328,14 @@ public class LedgerClient
      * @param amount    금액. <b>JSON에서는 문자열로 나간다</b> — 팀 규약이 부동소수점 손실을
      *                  막기 위해 금액을 문자열로 주고받기로 했다
      * @param paymentId 결제 ID. 상쇄 분개에서는 {@code null}이다
+     * @param ownerType {@code DRIVER}면 원장이 이 leg을 기사 잔액에 반영하고, 그 밖에는
+     *                  {@code driver_id}를 비운다. <b>둘 다 {@code DRIVER}면 서로 상쇄돼
+     *                  잔액이 움직이지 않는다</b>
      */
     private record EntryDetail(String direction,
                                @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
-                               Long paymentId)
+                               Long paymentId,
+                               String ownerType)
     {
     }
 
