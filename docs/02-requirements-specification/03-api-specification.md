@@ -147,7 +147,24 @@
 
 기사마다 한 번씩 `POST /api/ledger/entries`를 부른다. 상쇄 금액은 **지급액이 아니라 운임 합계**다 — 수수료를 뺀 금액만 상쇄하면 그 수수료가 미지급금으로 남아 다음날 이 기사가 또 선별된다.
 
-멱등 키는 `settlement-{batchId}-{driverId}`다. **재계산 가능해야** 재시도가 같은 키를 만든다.
+```json
+{
+  "idempotencyKey": "settlement-42-1",
+  "driverId": 1,
+  "entryType": "PAYOUT",
+  "entries": [
+    { "direction": "DEBIT",  "amount": "42000", "paymentId": null, "ownerType": "DRIVER" },
+    { "direction": "CREDIT", "amount": "42000", "paymentId": null, "ownerType": "PLATFORM" }
+  ]
+}
+```
+
+> ⚠️ **`ownerType`이 어느 leg을 기사 잔액에 반영할지 정한다.** 원장은 두 leg에 같은 요청 값을 받으므로 이걸로만 구분한다.
+> 빠뜨리거나 양쪽 다 `DRIVER`로 보내면 **두 leg이 서로 상쇄돼 미지급금이 전혀 움직이지 않는다.**
+> 요청은 201로 성공하고 분개도 쌓이는데 잔액만 그대로여서, **응답으로는 알 수 없고 다음날 같은 기사가 또 정산돼야 드러난다.**
+> ([ledger#7](https://github.com/Easy-ADJ/driver-ledger-system/issues/7)에서 실제로 있던 버그다)
+
+멱등 키는 `settlement-{batchId}-{driverId}`다. **재계산 가능해야** 재시도가 같은 키를 만든다. 헤더와 본문 양쪽에 같은 값이 들어간다.
 
 **에러 응답**
 
