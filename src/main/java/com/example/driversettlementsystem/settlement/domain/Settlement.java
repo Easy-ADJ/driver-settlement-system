@@ -106,6 +106,20 @@ public class Settlement
         this.ledgerId = Objects.requireNonNull(ledgerId, "ledgerId는 null일 수 없습니다");
     }
 
+    /**
+     * 지급 완료로 표시한다.
+     * <p>
+     * <b>실제 송금을 뜻하지 않는다.</b> 데모 범위에서 {@code PAID}는 처리 완료 표식이다.
+     * <p>
+     * 배치가 {@code PAID}로 전이할 때 항목도 함께 넘어간다. 배치만 바꾸고 항목을 두면
+     * 조회 응답에서 <b>배치는 지급 완료인데 기사별 항목은 확정 상태</b>로 보여, 보는 사람이
+     * 어느 쪽을 믿어야 할지 알 수 없게 된다.
+     */
+    public void markPaid()
+    {
+        payoutStatus = PayoutStatus.PAID;
+    }
+
     public Long getBatchId()
     {
         return batchId;

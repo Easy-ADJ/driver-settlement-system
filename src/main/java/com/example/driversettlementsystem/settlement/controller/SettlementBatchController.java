@@ -1,16 +1,23 @@
 package com.example.driversettlementsystem.settlement.controller;
 
 import com.example.driversettlementsystem.settlement.dto.BatchRunResponse;
+import com.example.driversettlementsystem.settlement.dto.SettlementResponse;
 import com.example.driversettlementsystem.settlement.service.SettlementJobRunner;
+import com.example.driversettlementsystem.settlement.service.SettlementLifecycleService;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 배치 수동 실행. 시연과 "놓친 날 메우기"용이다.
+ * 배치를 사람이 조작하는 엔드포인트 — 수동 실행과 상태 전이({@code RUNNING → CONFIRMED → PAID}).
+ * <p>
+ * 세 가지 모두 <b>명시적으로 불러야만</b> 일어난다. 특히 확정과 지급을 자동으로 잇지 않는
+ * 이유는, 대사가 불일치를 냈을 때 <b>보류된 배치를 사람이 확인하고 진행시키는 지점</b>이
+ * 필요하기 때문이다.
  * <p>
  * {@code @Scheduled}만 있으면 배치가 도는 것을 보여주려고 자정까지 기다려야 한다. 그리고
  * 서버가 그 시각에 죽어 있으면 그날 배치를 <b>아예 건너뛰고 나중에 따라잡지 않는다</b> —
@@ -29,9 +36,13 @@ public class SettlementBatchController
 
     private final SettlementJobRunner jobRunner;
 
-    public SettlementBatchController(SettlementJobRunner jobRunner)
+    private final SettlementLifecycleService lifecycleService;
+
+    public SettlementBatchController(SettlementJobRunner jobRunner,
+                                     SettlementLifecycleService lifecycleService)
     {
         this.jobRunner = jobRunner;
+        this.lifecycleService = lifecycleService;
     }
 
     /**
@@ -51,6 +62,38 @@ public class SettlementBatchController
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate targetDate)
     {
         return jobRunner.run(targetDate);
+    }
+
+    /**
+     * 배치를 확정한다. ({@code RUNNING → CONFIRMED}, {@code FR-S-01})
+     * <p>
+     * <b>이 호출이 원장에 지급 상쇄 분개를 남긴다.</b> 확정과 상쇄를 따로 두면 한쪽만 실행된
+     * 배치가 생기고, 상쇄가 빠진 쪽은 <b>다음날 같은 금액이 다시 정산된다.</b>
+     * <p>
+     * 대사가 불일치를 냈어도 막지 않는다 — <b>보류를 사람이 푸는 지점이 여기다.</b> 대신
+     * {@code reconciliationStatus}가 응답에 그대로 나오므로, 무엇을 알고 확정했는지가 남는다.
+     *
+     * @param batchId 확정할 배치
+     * @return 200 OK + 확정 후 상태
+     */
+    @PostMapping("/{batchId}/confirm")
+    public SettlementResponse confirmBatch(@PathVariable Long batchId)
+    {
+        return lifecycleService.confirm(batchId);
+    }
+
+    /**
+     * 배치를 지급 완료로 표시한다. ({@code CONFIRMED → PAID}, {@code FR-S-02})
+     * <p>
+     * <b>실제 송금은 하지 않는다.</b> 데모 범위에서 {@code PAID}는 처리 완료 표식이다.
+     *
+     * @param batchId 지급 표시할 배치
+     * @return 200 OK + 전이 후 상태
+     */
+    @PostMapping("/{batchId}/pay")
+    public SettlementResponse payBatch(@PathVariable Long batchId)
+    {
+        return lifecycleService.markAsPaid(batchId);
     }
 
 }
