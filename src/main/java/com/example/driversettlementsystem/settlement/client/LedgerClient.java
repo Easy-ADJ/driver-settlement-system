@@ -1,6 +1,7 @@
 package com.example.driversettlementsystem.settlement.client;
 
 import com.example.driversettlementsystem.exception.ExternalServiceException;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -28,9 +29,8 @@ import org.springframework.web.client.RestClient;
  * ⚠️ <b>미지급금 부호 규약은 이 클래스에만 나타난다.</b> 배치나 대사에 부호 처리가
  * 흩어지면 규약이 바뀔 때 여러 파일을 고쳐야 하고, 하나를 빠뜨리면 조용히 틀린다.
  * <p>
- * 🚧 지급 상쇄 분개({@code POST /api/ledger/entries})는 여기 없다. 원장의 현재 구현이
- * {@code entries}의 첫 항목만 읽고 {@code entryType}·{@code direction}을 무시해서, 그대로
- * 부르면 미지급금이 상쇄되는 게 아니라 늘어날 수 있다. 형태 확정 후 별도 이슈에서 붙인다.
+ * ⚠️ <b>{@link #recordPayoutEntry}를 빠뜨리면 다음날 배치가 같은 금액을 또 정산한다.</b>
+ * 그리고 당일 정산 결과만 보면 금액이 완벽하게 맞아서 눈에 띄지 않는다.
  */
 @Component
 public class LedgerClient
@@ -44,6 +44,15 @@ public class LedgerClient
 
     /** 지수 백오프 배수. */
     static final double BACKOFF_MULTIPLIER = 2.0;
+
+    /** 지급 상쇄 분개의 유형. 원장이 결제 분개({@code PAYMENT})와 구분하는 값이다. */
+    static final String PAYOUT_ENTRY_TYPE = "PAYOUT";
+
+    /** 미지급금을 줄이는 방향. 결제가 대변으로 쌓았으니 상쇄는 차변이다. */
+    static final String DEBIT = "DEBIT";
+
+    /** 상쇄의 반대편(현금 유출). 차변합과 대변합을 맞추기 위해 반드시 함께 보낸다. */
+    static final String CREDIT = "CREDIT";
 
     private final RestClient restClient;
 
@@ -145,6 +154,88 @@ public class LedgerClient
     }
 
     /**
+     * 정산 확정에 따른 지급 상쇄 분개를 원장에 기록한다. ({@code POST /api/ledger/entries})
+     * <p>
+     * <b>이 호출이 빠지면 미지급금이 줄지 않아 다음날 배치가 같은 금액을 다시 정산한다.</b>
+     * "중복 없이 한 번만"이 이 프로젝트 목표의 절반인데, 여기가 그 절반이 깨지는 자리다.
+     * 게다가 조용히 깨진다 — 당일 정산 결과만 보면 금액이 정확하다.
+     * <p>
+     * 상쇄 금액은 <b>지급액이 아니라 운임 합계</b>다. 42,000원 중 33,600원을 지급했다고
+     * 33,600원만 상쇄하면 수수료 8,400원이 미지급금으로 남아 <b>다음날 배치가 이 기사를 또
+     * 선별한다.</b> 그러면 정산 대상 선별이 영원히 끝나지 않는다.
+     * <p>
+     * ⚠️ 재시도가 실제로 일어나므로 <b>멱등 키가 재계산 가능한 값이어야 한다.</b>
+     * {@link #payoutIdempotencyKey}가 {@code batchId}와 {@code driverId}만으로 키를 만드는
+     * 이유다 — {@code UUID.randomUUID()}를 쓰면 재시도마다 키가 달라져 멱등성이 무의미해진다.
+     *
+     * @param batchId   배치 ID. 멱등 키 구성에 쓴다
+     * @param driverId  기사 ID
+     * @param fareTotal 상쇄할 미지급금. <b>지급액이 아니라 운임 합계다</b>
+     * @return 기록된 분개의 원장 ID
+     * @throws ExternalServiceException 재시도 후에도 실패했거나 응답에 원장 ID가 없을 때
+     */
+    public Long recordPayoutEntry(Long batchId, Long driverId, BigDecimal fareTotal)
+    {
+        String idempotencyKey = payoutIdempotencyKey(batchId, driverId);
+
+        PayoutEntryResponse response = call(
+                () -> restClient.post()
+                        .uri("/api/ledger/entries")
+                        .header("Idempotency-Key", idempotencyKey)
+                        .body(payoutRequest(idempotencyKey, driverId, fareTotal))
+                        .retrieve()
+                        .body(PayoutEntryResponse.class),
+                "batchId=" + batchId + " driverId=" + driverId + " 지급 상쇄 분개 기록");
+
+        if (response == null || response.ledgerId() == null)
+        {
+            throw ExternalServiceException.ledger(
+                    "batchId=" + batchId + " driverId=" + driverId + " 응답에 원장 ID가 없다", null);
+        }
+
+        return response.ledgerId();
+    }
+
+    /**
+     * 지급 상쇄의 멱등 키를 만든다.
+     * <p>
+     * <b>같은 배치의 같은 기사에 대한 재시도는 반드시 같은 키를 만들어야 한다.</b> 배치가
+     * 다르면 다른 키가 되므로 다음날 정산은 막히지 않는다.
+     * <p>
+     * 기사 100명 중 40명까지 기록하고 실패해도, 재실행하면 <b>앞의 40명은 원장이 멱등 키로
+     * 걸러내고 나머지 60명만 기록된다.</b> 키를 이렇게 잡는 두 번째 이유다.
+     *
+     * @param batchId  배치 ID
+     * @param driverId 기사 ID
+     * @return {@code settlement-{batchId}-{driverId}}
+     */
+    static String payoutIdempotencyKey(Long batchId, Long driverId)
+    {
+        return "settlement-" + batchId + "-" + driverId;
+    }
+
+    /**
+     * 상쇄 분개 요청 본문을 만든다.
+     * <p>
+     * <b>차변과 대변을 함께 보낸다.</b> 원장이 차변합 = 대변합을 검증하므로 한쪽만 보내면
+     * 거절된다. 미지급금을 줄이는 쪽이 차변이고, 반대편(현금 유출)이 대변이다.
+     * <p>
+     * {@code paymentId}는 {@code null}이다 — 상쇄는 특정 결제 한 건이 아니라 <b>그날까지
+     * 쌓인 미지급금 전체</b>를 대상으로 하기 때문이다.
+     *
+     * @param idempotencyKey 멱등 키. 헤더와 본문에 같은 값이 들어간다
+     * @param driverId       기사 ID
+     * @param fareTotal      상쇄할 운임 합계
+     * @return 요청 본문
+     */
+    private static PayoutEntryRequest payoutRequest(String idempotencyKey, Long driverId, BigDecimal fareTotal)
+    {
+        return new PayoutEntryRequest(idempotencyKey, driverId, PAYOUT_ENTRY_TYPE, List.of(
+                new EntryDetail(DEBIT, fareTotal, null),
+                new EntryDetail(CREDIT, fareTotal, null)));
+    }
+
+    /**
      * 재시도를 태우고, 소진되면 공통 에러 포맷으로 바꾼다.
      *
      * @param action      실제 호출
@@ -198,6 +289,42 @@ public class LedgerClient
      * @param data       미지급 기사 목록
      */
     private record UnpaidListResponse(String targetDate, List<DriverUnpaid> data)
+    {
+    }
+
+    /**
+     * {@code POST /api/ledger/entries} 요청 본문. 원장의 {@code LedgerEntryRequest}와 같은 형태다.
+     *
+     * @param idempotencyKey 멱등 키. {@code Idempotency-Key} 헤더와 같은 값이다
+     * @param driverId       기사 ID
+     * @param entryType      분개 유형. 상쇄는 {@code PAYOUT}이다
+     * @param entries        차변·대변 양쪽. 합이 같아야 원장이 받는다
+     */
+    private record PayoutEntryRequest(String idempotencyKey, Long driverId, String entryType,
+                                      List<EntryDetail> entries)
+    {
+    }
+
+    /**
+     * 분개 한 줄.
+     *
+     * @param direction {@code DEBIT} 또는 {@code CREDIT}
+     * @param amount    금액. <b>JSON에서는 문자열로 나간다</b> — 팀 규약이 부동소수점 손실을
+     *                  막기 위해 금액을 문자열로 주고받기로 했다
+     * @param paymentId 결제 ID. 상쇄 분개에서는 {@code null}이다
+     */
+    private record EntryDetail(String direction,
+                               @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
+                               Long paymentId)
+    {
+    }
+
+    /**
+     * {@code POST /api/ledger/entries} 응답.
+     *
+     * @param ledgerId 기록된 분개의 원장 ID. {@code SETTLEMENTS.ledger_id}에 저장한다
+     */
+    private record PayoutEntryResponse(Long ledgerId)
     {
     }
 
