@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|---|
 | `IF-01` | 결제 서버 (김주엽) | `GET /api/payments?date=` | 배치 Reader — 전일 결제 내역 | `paymentId`, `tripId`, **`driverId`**, `amount`, `status`, `requestedAt` | Job 실패 → 재시도 🚧 U2 | 확정(시그니처) / 🚧(필드·페이지네이션) |
 | `IF-02` | 원장 서버 (이치헌) | `GET /api/ledger/accounts/{accountId}/balance` | 대사 — 기사 미지급금 잔액 | `accountId`, `balance` | 대사 불가 → 🚧 U6 | 확정(시그니처) / 🚧(계정 조회 방법) |
-| `IF-03` | 원장 서버 (이치헌) | `POST /api/ledger/entries` | 정산 확정 시 지급 분개 기록 | — | 🚧 | 🚧 U8 |
+| `IF-03` | 원장 서버 (이치헌) | `POST /api/ledger/entries` | 정산 확정 시 지급 상쇄 분개 기록 | `ledgerId` | 2회 재시도 후 **배치를 확정하지 않는다** (트랜잭션 롤백) | 확정 |
 
 ## 정산 서버가 두 담당자에게 확인해야 할 것
 
