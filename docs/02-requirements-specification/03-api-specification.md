@@ -155,7 +155,7 @@
 |---|---|---|
 | 404 | `SETTLEMENT_NOT_FOUND` | 없는 `batchId` |
 | 409 | `INVALID_STATE_TRANSITION` | `RUNNING`이 아님 (이미 확정·지급됨) |
-| 502 | `LEDGER_SERVICE_UNAVAILABLE` | 원장 상쇄 분개 기록이 재시도 후에도 실패 |
+| 500 | `LEDGER_SERVICE_UNAVAILABLE` | 원장 상쇄 분개 기록이 재시도 후에도 실패 |
 
 ## 라. `POST /api/settlements/{batchId}/pay` — 지급 완료 표시 (`FR-S-02`)
 
