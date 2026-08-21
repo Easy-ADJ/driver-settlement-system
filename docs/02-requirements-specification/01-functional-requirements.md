@@ -51,8 +51,8 @@
 | ID | 요구사항 | 상세 | 우선 | 출처 | 수락 기준 | 상태 |
 |---|---|---|---|---|---|---|
 | `FR-S-01` | 상태 전이 관리 | `RUNNING` → `CONFIRMED` → `PAID`, 실패 시 `FAILED`. 정의되지 않은 전이는 거부한다 | M | `SPEC §3.3`, `SET` | `PAID` 상태를 `RUNNING`으로 되돌리려는 시도가 예외로 거부된다 | 확정 |
-| `FR-S-02` | `PAID` 전이 방식 | `CONFIRMED` → `PAID`를 API로 노출할지, 배치 내부에서만 처리할지 | S | `SET` | 🚧 확정 후 작성 | 🚧 U7 |
-| `FR-S-03` | 정산 확정 시 지급 분개 기록 | 원장에 지급 분개(`POST /api/ledger/entries`)를 기록할지 | S | `CTR §1`, `SET` | 🚧 확정 후 작성 | 🚧 U8 |
+| `FR-S-02` | `PAID` 전이 방식 | `POST /api/settlements/{batchId}/pay`로 노출한다. 확정은 `/confirm`으로 분리 | S | `SET` | `CONFIRMED`가 아닌 배치에 `/pay`를 부르면 409 `INVALID_STATE_TRANSITION`으로 거부되고, 성공 시 배치와 기사별 `payout_status`가 함께 `PAID`가 된다 | 확정 |
+| `FR-S-03` | 정산 확정 시 지급 분개 기록 | `/confirm`이 기사별로 원장에 상쇄 분개를 남긴다. 상쇄 금액은 **운임 합계** | S | `CTR §1`, `SET` | 원장 기록이 재시도 후에도 실패하면 배치가 `CONFIRMED`로 올라가지 않고 `ledger_id`도 남지 않는다 | 확정 |
 
 > **`PAID`는 실제 송금을 뜻하지 않는다.** 송금 연동은 범위 밖이다 ([기술서 §4.2](../01-requirements-statement/03-scope.md)). `PAID`는 "지급 완료로 표시함"까지다.
 
