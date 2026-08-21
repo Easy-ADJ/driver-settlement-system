@@ -323,4 +323,31 @@ class LedgerClientTest
                 .hasMessageContaining("원장 ID가 없다");
     }
 
+    /**
+     * <b>이 필드가 빠지면 아무 에러 없이 미지급금이 그대로 남는다.</b> 원장은 두 leg에 같은
+     * 요청 값을 받으므로 {@code ownerType}으로만 어느 쪽이 기사 잔액인지 안다. 구분하지
+     * 않으면 <b>양쪽 다 기사에 달려 서로 상쇄되고 잔액이 0으로 고정된다</b> —
+     * 실제로 있던 버그다 (ledger#7).
+     * <p>
+     * 요청은 201로 성공하고 분개도 쌓인다. <b>잔액만 안 움직인다.</b> 그래서 응답으로는
+     * 절대 알 수 없고, 다음날 같은 기사가 또 정산돼야 드러난다.
+     */
+    @DisplayName("차변만 DRIVER다 — 양쪽 다 DRIVER면 잔액이 움직이지 않는다")
+    @Test
+    void marksOnlyDriverLegAsDriverOwned()
+    {
+        ledgerServer.expect(once(), requestTo(ENTRIES_URI))
+                .andExpect(jsonPath("$.entries[0].direction").value("DEBIT"))
+                .andExpect(jsonPath("$.entries[0].ownerType").value("DRIVER"))
+                .andExpect(jsonPath("$.entries[1].direction").value("CREDIT"))
+                .andExpect(jsonPath("$.entries[1].ownerType").value("PLATFORM"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{ \"ledgerId\": 991 }"));
+
+        ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("42000"));
+
+        ledgerServer.verify();
+    }
+
 }
