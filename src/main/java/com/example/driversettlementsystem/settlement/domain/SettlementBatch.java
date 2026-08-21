@@ -110,6 +110,39 @@ public class SettlementBatch
         }
     }
 
+    /**
+     * 이 배치의 지급액 합계를 기록한다.
+     * <p>
+     * 항목을 다 더하면 나오는 값이지만 저장해 둔다. 대사와 대시보드가 매번 기사 수만큼
+     * 더하지 않아도 되고, <b>수수료율이 나중에 바뀌어도 그날 실제로 얼마를 지급했는지가
+     * 남는다.</b>
+     *
+     * @param totalPayoutAmount 기사별 지급액의 합
+     */
+    public void recordTotalPayout(BigDecimal totalPayoutAmount)
+    {
+        this.totalPayoutAmount = Objects.requireNonNull(
+                totalPayoutAmount, "totalPayoutAmount는 null일 수 없습니다");
+    }
+
+    /**
+     * 대사 판정 결과를 기록한다.
+     * <p>
+     * <b>이 값은 기록용이 아니라 상태 전이를 좌우한다.</b> {@code MATCHED}가 아니면 배치를
+     * 확정하지 않는다 — 틀렸거나(<b>MISMATCHED</b>) 확인하지 못한(<b>SKIPPED</b>) 금액을
+     * 지급 단계로 넘기지 않기 위해서다.
+     * <p>
+     * 확정 후에도 지워지지 않는다. 나중에 레코드를 보면 <b>{@code CONFIRMED} +
+     * {@code MISMATCHED}</b> 조합이 "사람이 확인하고 밀어붙인 확정"이라는 증거가 된다.
+     *
+     * @param reconciliationStatus 대사 판정 결과
+     */
+    public void recordReconciliation(ReconciliationStatus reconciliationStatus)
+    {
+        this.reconciliationStatus = Objects.requireNonNull(
+                reconciliationStatus, "reconciliationStatus는 null일 수 없습니다");
+    }
+
     public Long getBatchId()
     {
         return batchId;

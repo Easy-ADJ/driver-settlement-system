@@ -2,8 +2,12 @@ package com.example.driversettlementsystem.settlement.batch;
 
 import com.example.driversettlementsystem.exception.DuplicateSettlementException;
 import com.example.driversettlementsystem.settlement.domain.BatchStatus;
+import com.example.driversettlementsystem.settlement.domain.ReconciliationStatus;
 import com.example.driversettlementsystem.settlement.domain.SettlementBatch;
 import com.example.driversettlementsystem.settlement.repository.SettlementBatchRepository;
+import com.example.driversettlementsystem.settlement.repository.SettlementRepository;
+import com.example.driversettlementsystem.settlement.service.ReconciliationService;
+import com.example.driversettlementsystem.settlement.service.SettlementLifecycleService;
 import java.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +26,13 @@ import org.springframework.stereotype.Component;
  * 상태 전이는 반드시 {@link SettlementBatch#transitionTo}를 거친다 — {@code status}를 직접
  * 바꾸면 전이 검증이 무의미해진다.
  * <p>
- * 🚧 <b>대사 트리거는 아직 없다.</b> Job이 성공해도 배치는 {@code RUNNING}으로 남는다.
- * 확정은 대사가 {@code MATCHED}를 낼 때만 하기로 정해져 있고, 대사가 아직 없기 때문이다.
- * 검증되지 않은 금액을 확정으로 올리면 그대로 지급 단계로 넘어간다.
+ * <b>확정은 대사가 {@code MATCHED}를 낼 때만 한다.</b> 검증되지 않은 금액을 확정으로 올리면
+ * 그대로 지급 단계로 넘어간다. {@code MISMATCHED}(틀렸다)와 {@code SKIPPED}(확인 못 했다)는
+ * 다른 정보지만 <b>둘 다 확정을 막는다</b> — 후속 조치만 다르다.
  *
- * @see DuplicateBatchGuard 시작 전 중복 검사
+ * @see DuplicateBatchGuard        시작 전 중복 검사
+ * @see ReconciliationService      종료 후 대사
+ * @see SettlementLifecycleService 확정 — 수동 확정과 공유하는 단 하나의 경로
  */
 @Component
 public class SettlementJobListener implements JobExecutionListener
@@ -49,11 +55,23 @@ public class SettlementJobListener implements JobExecutionListener
 
     private final SettlementBatchRepository batchRepository;
 
+    private final SettlementRepository settlementRepository;
+
+    private final ReconciliationService reconciliationService;
+
+    private final SettlementLifecycleService lifecycleService;
+
     public SettlementJobListener(DuplicateBatchGuard duplicateBatchGuard,
-                                 SettlementBatchRepository batchRepository)
+                                 SettlementBatchRepository batchRepository,
+                                 SettlementRepository settlementRepository,
+                                 ReconciliationService reconciliationService,
+                                 SettlementLifecycleService lifecycleService)
     {
         this.duplicateBatchGuard = duplicateBatchGuard;
         this.batchRepository = batchRepository;
+        this.settlementRepository = settlementRepository;
+        this.reconciliationService = reconciliationService;
+        this.lifecycleService = lifecycleService;
     }
 
     /**
@@ -80,11 +98,7 @@ public class SettlementJobListener implements JobExecutionListener
     }
 
     /**
-     * Job 종료 후 — 실패했으면 {@code FAILED}로 전이한다.
-     * <p>
-     * <b>성공했을 때는 아무것도 하지 않는다.</b> 배치는 {@code RUNNING}으로 남고, 확정은
-     * 대사가 {@code MATCHED}를 낼 때만 한다. {@code RUNNING → CONFIRMED} 전이는 열려 있어
-     * 대사가 그대로 이어받는다.
+     * Job 종료 후 — 실패면 {@code FAILED}, 성공이면 합계 집계 → 대사 → 판정에 따른 분기.
      * <p>
      * 중복 거부로 {@link #beforeJob}이 실패한 경우에도 Spring Batch는 이 메서드를 부른다.
      * 그때는 {@code ExecutionContext}에 {@code batchId}가 없다 — <b>만들지도 않은 배치를
@@ -95,27 +109,96 @@ public class SettlementJobListener implements JobExecutionListener
     @Override
     public void afterJob(JobExecution jobExecution)
     {
-        if (!jobExecution.getStatus().isUnsuccessful())
-        {
-            return;
-        }
-
         ExecutionContext executionContext = jobExecution.getExecutionContext();
 
         if (!executionContext.containsKey(BATCH_ID_KEY))
         {
-            log.warn("배치가 생성되기 전에 Job이 실패했다 — 남길 상태가 없다");
+            log.warn("배치가 생성되기 전에 Job이 끝났다 — 남길 상태가 없다");
             return;
         }
 
         long batchId = executionContext.getLong(BATCH_ID_KEY);
 
+        if (jobExecution.getStatus().isUnsuccessful())
+        {
+            markFailed(batchId);
+            return;
+        }
+
+        settleUp(batchId);
+    }
+
+    /**
+     * @param batchId 실패한 배치
+     */
+    private void markFailed(long batchId)
+    {
         batchRepository.findById(batchId).ifPresent(batch ->
         {
             batch.transitionTo(BatchStatus.FAILED);
             batchRepository.save(batch);
             log.error("정산 배치 실패 — batchId={}", batchId);
         });
+    }
+
+    /**
+     * 집계가 끝난 배치의 합계를 채우고 대사한 뒤, {@code MATCHED}일 때만 확정한다.
+     * <p>
+     * <b>판정 결과를 먼저 저장하고 확정한다.</b> 순서를 뒤집으면 확정 중 오류가 났을 때
+     * "대사를 했는지조차" 알 수 없는 배치가 남는다.
+     *
+     * @param batchId 성공한 배치
+     */
+    private void settleUp(long batchId)
+    {
+        SettlementBatch batch = batchRepository.findById(batchId).orElse(null);
+
+        if (batch == null)
+        {
+            log.error("배치를 찾을 수 없다 — batchId={}", batchId);
+            return;
+        }
+
+        batch.recordTotalPayout(settlementRepository.sumAmountByBatchId(batchId));
+
+        ReconciliationStatus reconciliation = reconciliationService.reconcile(batch);
+
+        batchRepository.save(batch);
+
+        if (reconciliation != ReconciliationStatus.MATCHED)
+        {
+            log.warn("대사가 {}이라 확정하지 않는다 — batchId={}", reconciliation, batchId);
+            return;
+        }
+
+        confirmQuietly(batchId);
+    }
+
+    /**
+     * 확정한다. <b>여기서 실패해도 Job까지 실패로 만들지 않는다.</b>
+     * <p>
+     * 집계는 이미 끝났고 대사도 통과했다. 원장이 잠깐 죽어 상쇄 분개를 못 남긴 것 때문에
+     * 그 결과까지 날릴 이유가 없다 — 배치는 {@code RUNNING}으로 남고, <b>사람이
+     * {@code POST /api/settlements/&#123;batchId&#125;/confirm}으로 이어서 진행하면 된다.</b>
+     * 그 엔드포인트가 존재하는 이유이기도 하다.
+     * <p>
+     * ⚠️ 반대로 여기서 예외를 밖으로 던지면 Spring Batch가 이미 성공으로 기록한 Job의
+     * 상태와 어긋나고, 그 어긋남은 실행 기록에만 남아 <b>아무도 보지 않는다.</b>
+     *
+     * @param batchId 확정할 배치
+     */
+    private void confirmQuietly(long batchId)
+    {
+        try
+        {
+            lifecycleService.confirm(batchId);
+            log.info("대사 일치 — 배치를 확정했다. batchId={}", batchId);
+        }
+        catch (RuntimeException e)
+        {
+            log.error("대사는 일치했으나 확정에 실패했다 — batchId={}. "
+                    + "POST /api/settlements/{}/confirm 으로 이어서 진행할 수 있다", batchId, batchId, e);
+        }
     }
 
 }

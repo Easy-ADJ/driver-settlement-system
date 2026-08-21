@@ -40,7 +40,7 @@ flowchart TB
     reconResult -->|MATCHED| confirm["status = CONFIRMED"]
     confirm --> endOk(["정상 종료"])
 
-    reconResult -->|"MISMATCHED<br/>또는 대사 불가"| pending["🚧 U6 미확정<br/>A: CONFIRMED 보류<br/>B: 확정하되 불일치 기록"]
+    reconResult -->|"MISMATCHED<br/>또는 SKIPPED"| pending["RUNNING 유지 — 확정 보류<br/>판정 결과는 저장한다"]
     pending --> endPending(["종료 — 관리자 확인 필요"])
 
     failBatch --> endFail(["실패 종료 → UC-05 재시작 대상"])
@@ -52,7 +52,7 @@ flowchart TB
     class guard,chunkLoop,readOk,chunkErr,reconResult decision;
     class reject,failBatch,rollbackChunk,endReject,endFail bad;
     class confirm,endOk good;
-    class pending,endPending unknown;
+    class pending,endPending bad;
 ```
 
 **짚어둘 점**
@@ -63,7 +63,7 @@ flowchart TB
 | 2 | **`FAILED` 배치만 있으면 통과시킨다.** 실패한 배치는 재실행 대상이다 ([`UC-05`](../03-use-case-diagram/06-uc-05-failed-restart.md)) |
 | 3 | **결제 0건이어도 대사·확정으로 진행한다.** "돌렸는데 0건"과 "안 돌렸다"는 구별돼야 한다 ([`UC-01` A4](../03-use-case-diagram/02-uc-01-batch-execution.md)) |
 | 4 | **청크 롤백은 배치 전체 롤백이 아니다.** 이전 청크 결과는 남는다. 이것이 `FR-B-07` 실패 재시작의 전제다 |
-| 5 | 🚧 대사 실패 분기(U6)가 이 흐름의 유일한 미확정 지점이다. **"지급 대상 금액을 확정할 것인가"** 를 정하는 분기라 임의로 채우지 않는다 |
+| 5 | **대사가 `MATCHED`일 때만 확정한다.** `MISMATCHED`(틀렸다)와 `SKIPPED`(확인 못 했다)는 다른 정보지만 둘 다 확정을 막는다 — 검증되지 않은 금액을 지급 단계로 넘기지 않기 위해서다. 보류된 배치는 사람이 `POST /api/settlements/{batchId}/confirm`으로 진행시킨다 |
 | 6 | ⚠️ 좌상단 `guard`는 **애플리케이션 검사**다. 두 프로세스가 동시에 통과할 수 있다 ([`UC-04` D4](../03-use-case-diagram/05-uc-04-duplicate-rejection.md)). DB 부분 UNIQUE 인덱스를 함께 두는 것을 권한다 |
 
 ---
