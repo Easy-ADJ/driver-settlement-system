@@ -42,6 +42,33 @@ Get-NetTCPConnection -LocalPort 5432 -State Listen
 
 ## 1. PostgreSQL 띄우기
 
+**Docker 데몬이 먼저 떠 있어야 한다.** 안 떠 있으면 `docker` 명령이 데몬에 붙지 못해 이렇게 난다.
+
+```
+failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine;
+check if the path is correct and if the daemon is running:
+open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified
+```
+
+경로나 명령어 오타로 보이지만 아니다. **트레이 아이콘을 찾을 것 없이 CLI로 켠다.**
+
+```powershell
+docker desktop status    # 지금 떠 있는지
+docker desktop start     # 켜기
+docker desktop stop      # 내리기
+docker desktop restart   # 통째로 다시
+```
+
+`start`는 **엔진이 실제로 준비된 뒤에** 프롬프트를 돌려준다. 그래서 뒤에 명령을 바로 이어 붙여도 된다.
+
+```powershell
+docker desktop start; docker start local-db
+```
+
+(`-d`를 붙이면 기다리지 않고 즉시 돌아온다. 이어서 `docker` 명령을 쓸 거라면 붙이지 않는다.)
+
+> `docker desktop` 하위 명령은 Docker Desktop이 설치돼 있어야 쓸 수 있다 — GUI를 띄우지 않을 뿐, 엔진은 Desktop 것이다.
+
 ```powershell
 docker run -d --name local-db -p 55432:5432 `
   -e POSTGRES_PASSWORD=localonly -e POSTGRES_DB=settlement `
@@ -49,6 +76,8 @@ docker run -d --name local-db -p 55432:5432 `
 ```
 
 스키마는 앱이 뜰 때 Flyway가 만든다. 따로 할 일이 없다.
+
+데몬을 내렸다 올리면 이 컨테이너도 함께 멈춰 있다. 그때는 **`docker run`이 아니라 `docker start local-db`** 다 — `run`을 다시 하면 이름이 겹쳐 실패한다. 데이터는 그대로 남아 있다.
 
 > 🔒 `localonly`는 **로컬 전용 값**이다. 배포 환경 비밀번호를 여기에 쓰지 않는다.
 
@@ -263,6 +292,7 @@ $env:JAVA_HOME = "C:\Users\User\.jdks\corretto-17.0.20"
 
 ```powershell
 docker rm -f local-db
+docker desktop stop      # 데몬까지 내려 자원을 돌려받는다
 ```
 
 가짜 원장과 서버는 각 창에서 `Ctrl+C`.
@@ -273,6 +303,8 @@ docker rm -f local-db
 
 | 증상 | 원인 |
 |---|---|
+| `failed to connect to the docker API` | Docker 데몬이 안 떠 있다. `docker desktop start` |
+| `container name "/local-db" is already in use` | 만들어 둔 컨테이너가 멈춰 있다. `run` 말고 `docker start local-db` |
 | `password 인증이 실패했습니다` | 5432에 다른 PostgreSQL이 있다. 포트가 **55432**인지 확인 |
 | `Could not resolve placeholder 'SPRING_DATASOURCE_URL'` | 환경변수를 안 넣었다. `.env`는 자동으로 안 읽힌다 |
 | 배치가 500 `LEDGER_SERVICE_UNAVAILABLE` | 가짜 원장이 안 떠 있거나 `LEDGER_API_BASE_URL`이 틀렸다 |
