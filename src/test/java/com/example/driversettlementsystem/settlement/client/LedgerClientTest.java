@@ -2,8 +2,13 @@ package com.example.driversettlementsystem.settlement.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.ExpectedCount.times;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -17,6 +22,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -36,6 +42,8 @@ class LedgerClientTest
     private static final String UNPAID_URI = "http://ledger.test/api/ledger/unpaid?date=2026-08-19";
 
     private static final String DRIVER_URI = "http://ledger.test/api/ledger?driver_id=1";
+
+    private static final String ENTRIES_URI = "http://ledger.test/api/ledger/entries";
 
     private MockRestServiceServer ledgerServer;
 
@@ -198,6 +206,121 @@ class LedgerClientTest
     {
         assertThat(LedgerClient.MAX_RETRIES).isEqualTo(2);
         assertThat(LedgerClient.BACKOFF_MULTIPLIER).isEqualTo(2.0);
+    }
+
+    /**
+     * <b>이 요청 형태가 이 이슈의 전부다.</b> 원장은 차변합 = 대변합을 검증하므로 한쪽만
+     * 보내면 거절되고, {@code entryType}이 {@code PAYOUT}이 아니면 결제 분개로 쌓여
+     * <b>미지급금이 줄기는커녕 늘어난다.</b>
+     */
+    @DisplayName("상쇄 분개는 차변·대변을 함께, PAYOUT 유형으로 보낸다")
+    @Test
+    void sendsBalancedPayoutEntry()
+    {
+        ledgerServer.expect(once(), requestTo(ENTRIES_URI))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("Idempotency-Key", "settlement-7-1"))
+                .andExpect(jsonPath("$.idempotencyKey").value("settlement-7-1"))
+                .andExpect(jsonPath("$.driverId").value(1))
+                .andExpect(jsonPath("$.entryType").value("PAYOUT"))
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.entries[0].direction").value("DEBIT"))
+                .andExpect(jsonPath("$.entries[0].amount").value("42000"))
+                .andExpect(jsonPath("$.entries[0].paymentId").doesNotExist())
+                .andExpect(jsonPath("$.entries[1].direction").value("CREDIT"))
+                .andExpect(jsonPath("$.entries[1].amount").value("42000"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{ \"ledgerId\": 991 }"));
+
+        Long ledgerId = ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("42000"));
+
+        ledgerServer.verify();
+        assertThat(ledgerId).isEqualTo(991L);
+    }
+
+    /**
+     * 금액을 숫자로 보내면 JSON 파서마다 부동소수점으로 읽어 <b>1원이 조용히 사라질 수
+     * 있다.</b> 팀 규약이 금액을 문자열로 정한 이유이고, 규약은 지켜야 규약이다.
+     */
+    @DisplayName("금액은 JSON에서 문자열로 나간다")
+    @Test
+    void sendsAmountAsString()
+    {
+        ledgerServer.expect(once(), requestTo(ENTRIES_URI))
+                .andExpect(content().string(containsString("\"amount\":\"33600\"")))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{ \"ledgerId\": 1 }"));
+
+        ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("33600"));
+
+        ledgerServer.verify();
+    }
+
+    /**
+     * <b>재시도마다 키가 달라지면 멱등성이 무의미해진다.</b> 5xx로 두 번 튕긴 뒤 성공하는
+     * 동안 세 번의 요청이 모두 같은 키를 들고 가야, 원장이 첫 결과를 돌려줄 수 있다.
+     * {@code UUID.randomUUID()}를 썼다면 여기서 분개가 세 세트 쌓인다.
+     */
+    @DisplayName("재시도해도 멱등 키가 같아 분개가 한 세트만 쌓인다")
+    @Test
+    void keepsSameIdempotencyKeyAcrossRetries()
+    {
+        ledgerServer.expect(times(2), requestTo(ENTRIES_URI))
+                .andExpect(header("Idempotency-Key", "settlement-7-1"))
+                .andRespond(withServerError());
+        ledgerServer.expect(once(), requestTo(ENTRIES_URI))
+                .andExpect(header("Idempotency-Key", "settlement-7-1"))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{ \"ledgerId\": 991 }"));
+
+        Long ledgerId = ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("42000"));
+
+        ledgerServer.verify();
+        assertThat(ledgerId).isEqualTo(991L);
+    }
+
+    @DisplayName("멱등 키는 배치와 기사만으로 만들어져 재계산할 수 있다")
+    @Test
+    void buildsRecomputableIdempotencyKey()
+    {
+        assertThat(LedgerClient.payoutIdempotencyKey(7L, 1L)).isEqualTo("settlement-7-1");
+        assertThat(LedgerClient.payoutIdempotencyKey(7L, 1L))
+                .isEqualTo(LedgerClient.payoutIdempotencyKey(7L, 1L));
+        assertThat(LedgerClient.payoutIdempotencyKey(8L, 1L)).isNotEqualTo("settlement-7-1");
+    }
+
+    /**
+     * 재시도를 소진해도 상쇄가 기록되지 않았다는 사실은 <b>반드시 위로 올라가야 한다.</b>
+     * 여기서 삼키면 배치가 확정되고, 다음날 같은 금액이 다시 정산된다.
+     */
+    @DisplayName("상쇄 기록이 끝내 실패하면 예외로 올라간다 — 조용히 넘어가지 않는다")
+    @Test
+    void failsLoudlyWhenPayoutCannotBeRecorded()
+    {
+        ledgerServer.expect(times(3), requestTo(ENTRIES_URI)).andRespond(withServerError());
+
+        assertThatThrownBy(() -> ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("42000")))
+                .isInstanceOf(ExternalServiceException.class)
+                .hasMessageContaining("지급 상쇄 분개 기록");
+
+        ledgerServer.verify();
+    }
+
+    @DisplayName("응답에 원장 ID가 없으면 성공으로 치지 않는다")
+    @Test
+    void rejectsResponseWithoutLedgerId()
+    {
+        ledgerServer.expect(once(), requestTo(ENTRIES_URI))
+                .andRespond(withStatus(HttpStatus.CREATED)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{ }"));
+
+        assertThatThrownBy(() -> ledgerClient.recordPayoutEntry(7L, 1L, new BigDecimal("42000")))
+                .isInstanceOf(ExternalServiceException.class)
+                .hasMessageContaining("원장 ID가 없다");
     }
 
 }
