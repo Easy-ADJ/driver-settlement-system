@@ -2,15 +2,15 @@
 
 # 🔀 FC-04 — 정산 배치 상태 전이
 
-대응: [`UC-01`](../03-use-case-diagram/02-uc-01-batch-execution.md), [`UC-05`](../03-use-case-diagram/06-uc-05-failed-restart.md), [`UC-06`](../03-use-case-diagram/07-uc-06-07-pending.md) 🚧 / `FR-S-01`, `FR-S-02` 🚧, `FR-B-07`
+대응: [`UC-01`](../03-use-case-diagram/02-uc-01-batch-execution.md), [`UC-05`](../03-use-case-diagram/06-uc-05-failed-restart.md), [`UC-06`](../03-use-case-diagram/07-uc-06-07-pending.md) / `FR-S-01`, `FR-S-02`, `FR-B-07`
 
 ```mermaid
 stateDiagram-v2
     [*] --> RUNNING : Job 시작 — 사전검사 통과 후
-    RUNNING --> CONFIRMED : 전 청크 처리 + 대사 MATCHED
+    RUNNING --> CONFIRMED : POST /{batchId}/confirm — 상쇄 분개 기록 후
     RUNNING --> FAILED : 청크 예외 / 외부 호출 실패
     FAILED --> RUNNING : 재시작 — 실패 지점부터 (FR-B-07)
-    CONFIRMED --> PAID : 🚧 U7 — API 노출 vs 배치 내부 처리
+    CONFIRMED --> PAID : POST /{batchId}/pay
     CONFIRMED --> [*]
     PAID --> [*]
     FAILED --> [*] : 관리자가 포기 결정

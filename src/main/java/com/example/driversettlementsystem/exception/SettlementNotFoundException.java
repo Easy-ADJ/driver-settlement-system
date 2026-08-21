@@ -38,6 +38,20 @@ public class SettlementNotFoundException extends SettlementException
     }
 
     /**
+     * 배치 ID로 찾았는데 그런 배치가 없을 때.
+     * <p>
+     * 이때 {@link #getTargetDate()}는 {@code null}이다 — 배치를 찾지 못했으니 그 배치가
+     * 어느 날짜였는지 알 방법이 없다.
+     *
+     * @param batchId 조회한 배치 ID
+     * @return 조회 실패 예외
+     */
+    public static SettlementNotFoundException batchIdNotFound(Long batchId)
+    {
+        return new SettlementNotFoundException(null, "배치 " + batchId + "를 찾을 수 없습니다");
+    }
+
+    /**
      * 배치는 있지만 그 기사의 정산 항목이 없을 때.
      * <p>
      * 미지급금이 0이어서 항목이 만들어지지 않은 기사가 여기 해당한다.

@@ -59,6 +59,17 @@
 > 그 자리를 원장 `GET /api/ledger?driver_id=` 응답의 `paymentDetails`가 채운다 — 결제 건별 금액과 승인 시각이다.
 > 즉 **이 필드는 정산 DB가 아니라 원장에서 조회 시점에 채워진다.**
 
+**에러 응답**
+
+| 상태 | `code` | 상황 |
+|---|---|---|
+| 400 | `INVALID_DATE_FORMAT` | `date`가 `yyyy-MM-dd`가 아님 |
+| 400 | `MISSING_REQUIRED_PARAMETER` | `date` 누락 |
+| 404 | `SETTLEMENT_NOT_FOUND` | 해당 일자·기사의 정산 내역 없음 |
+| 500 | `INTERNAL_ERROR` | 그 외 |
+
+전체 에러 코드 목록은 [§7 에러 코드](./06-error-codes.md)에 있다.
+
 ## 나. `POST /api/settlements/batch` — 배치 수동 실행 (시연·놓친 날 메우기)
 
 자정을 기다리지 않고 원하는 날짜로 정산 배치를 돌린다. **스케줄 실행과 같은 경로를 타므로** 중복 검사·상태 전이가 동일하게 동작한다.
@@ -84,7 +95,7 @@
 ```
 
 - **`202 Accepted`가 아니라 `200 OK`다.** 배치가 동기로 돌아 응답 시점에는 이미 끝나 있다. "접수했다"고 답하면 사실과 다르다
-- **`batchStatus`가 `RUNNING`으로 나오는 것은 정상이다.** 배치는 성공해도 확정되지 않는다 — 확정은 대사가 `MATCHED`를 낼 때만 한다
+- **`batchStatus`가 `RUNNING`으로 나오는 것은 정상이다.** 배치는 성공해도 확정되지 않는다 — 확정은 아래 **다.** 를 명시적으로 불러야 일어난다
 - `batchId`로 곧바로 `GET /api/settlements?date=`를 불러 결과를 확인할 수 있다
 
 **에러 응답**
@@ -99,20 +110,73 @@
 
 ---
 
+## 다. `POST /api/settlements/{batchId}/confirm` — 배치 확정 (`FR-S-01`)
+
+`RUNNING` → `CONFIRMED` 전이. **이 호출이 원장에 지급 상쇄 분개를 남긴다.**
+
+> ⚠️ **확정과 상쇄 분개는 하나의 트랜잭션이다.** 원장 기록이 재시도 후에도 실패하면 배치는 확정되지 않는다.
+> 둘을 떼어 놓으면 **미지급금이 남은 채로 확정된 배치**가 생기고, 다음날 배치가 같은 금액을 또 정산한다.
+> 그리고 당일 결과만 보면 금액이 정확해서 눈에 띄지 않는다.
+
+**보류된 배치를 사람이 푸는 지점이기도 하다.** 대사가 `MISMATCHED`를 내면 자동 확정은 일어나지 않는데, 그 배치를 진행시킬 방법이 이 API다. **`MISMATCHED`여도 거부하지 않는다** — 거부하면 보류를 풀 수단이 없어진다.
+
+> 대신 `reconciliation_status`는 그대로 남는다. 나중에 레코드를 보면 **`CONFIRMED` + `MISMATCHED`** 조합이 "사람이 밀어붙인 확정"이라는 증거가 된다.
+> 확정을 건너뛰고 바로 `PAID`로 보내는 방식을 택했다면 이 구분이 남지 않는다 — `PAID` 레코드만 보고는 검증을 통과한 것인지 사람이 밀어붙인 것인지 알 수 없다.
+
+**요청 경로 변수**
+
+| 이름 | 타입 | 설명 |
+|---|---|---|
+| `batchId` | number | 확정할 배치 |
+
+**응답 200** — `가.`의 조회 응답과 같은 형태다. 단 `payments`는 항상 빈 배열이다 (상태를 바꾼 직후에 결제 건별 근거가 필요하지 않다).
+
+```json
+{
+  "targetDate": "2026-08-19",
+  "batchStatus": "CONFIRMED",
+  "reconciliationStatus": null,
+  "settlements": [
+    { "driverId": 1, "fareTotal": "42000.00", "feeAmount": "8400.00",
+      "payoutAmount": "33600.00", "payoutStatus": "CONFIRMED", "payments": [] }
+  ]
+}
+```
+
+**원장으로 나가는 호출**
+
+기사마다 한 번씩 `POST /api/ledger/entries`를 부른다. 상쇄 금액은 **지급액이 아니라 운임 합계**다 — 수수료를 뺀 금액만 상쇄하면 그 수수료가 미지급금으로 남아 다음날 이 기사가 또 선별된다.
+
+멱등 키는 `settlement-{batchId}-{driverId}`다. **재계산 가능해야** 재시도가 같은 키를 만든다.
+
 **에러 응답**
 
 | 상태 | `code` | 상황 |
 |---|---|---|
-| 400 | `INVALID_DATE_FORMAT` | `date`가 `yyyy-MM-dd`가 아님 |
-| 400 | `MISSING_REQUIRED_PARAMETER` | `date` 누락 |
-| 404 | `SETTLEMENT_NOT_FOUND` | 해당 일자·기사의 정산 내역 없음 |
-| 500 | `INTERNAL_ERROR` | 그 외 |
+| 404 | `SETTLEMENT_NOT_FOUND` | 없는 `batchId` |
+| 409 | `INVALID_STATE_TRANSITION` | `RUNNING`이 아님 (이미 확정·지급됨) |
+| 502 | `LEDGER_SERVICE_UNAVAILABLE` | 원장 상쇄 분개 기록이 재시도 후에도 실패 |
 
-전체 에러 코드 목록은 [§7 에러 코드](./06-error-codes.md)에 있다.
+## 라. `POST /api/settlements/{batchId}/pay` — 지급 완료 표시 (`FR-S-02`)
 
-## 다. 🚧 정산 확정·지급 처리 API (`FR-S-02`)
+`CONFIRMED` → `PAID` 전이. 배치와 기사별 항목(`payout_status`)을 **함께** 바꾼다.
 
-`CONFIRMED` → `PAID` 전이를 API로 노출할지 미확정 (U7). 노출한다면 쓰기 호출이므로 `Idempotency-Key` 헤더 전파 규칙(`CTR §2`)이 적용된다.
+> ⚠️ **실제 송금은 일어나지 않는다.** 데모 범위에서 `PAID`는 "정산 처리 완료" 표식이다.
+
+> 배치만 바꾸고 항목을 두면 조회 응답에서 **배치는 지급 완료인데 기사별 항목은 확정 상태**로 보인다. 보는 사람이 어느 쪽을 믿어야 할지 알 수 없다.
+
+**응답 200** — `다.`와 같은 형태이며 `batchStatus`·`payoutStatus`가 `PAID`다.
+
+**에러 응답**
+
+| 상태 | `code` | 상황 |
+|---|---|---|
+| 404 | `SETTLEMENT_NOT_FOUND` | 없는 `batchId` |
+| 409 | `INVALID_STATE_TRANSITION` | `CONFIRMED`가 아님 |
+
+> **이미 `PAID`인 배치에 다시 부르면 409다.** 같은 결과를 돌려주는 대신 거부하는 쪽을 택했다 — 두 번 눌렀다는 사실 자체를 호출자가 알아야 한다.
+
+> 🔓 **다. 와 라. 도 인증이 없다.** `나.`와 같은 이유이며, 운영 전환 시 함께 잠가야 한다.
 
 ---
 
