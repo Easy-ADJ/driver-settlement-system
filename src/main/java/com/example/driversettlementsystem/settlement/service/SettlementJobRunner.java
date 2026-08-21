@@ -8,6 +8,7 @@ import com.example.driversettlementsystem.settlement.dto.BatchRunResponse;
 import com.example.driversettlementsystem.settlement.repository.SettlementBatchRepository;
 import com.example.driversettlementsystem.settlement.repository.SettlementRepository;
 import java.time.LocalDate;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.job.Job;
@@ -116,11 +117,16 @@ public class SettlementJobRunner
     /**
      * 실패한 실행에서 원래 예외를 꺼내 다시 던진다.
      * <p>
-     * <b>이게 없으면 중복 실행이 200 OK로 응답한다.</b> 리스너가 던진
-     * {@code DuplicateSettlementException}은 Spring Batch가 삼켜 실행 기록에만 남기 때문이다.
+     * <b>이게 없으면 실패한 배치가 200 OK로 응답한다.</b> Spring Batch는 리스너와 스텝에서
+     * 올라온 예외를 삼켜 실행 기록에만 남기기 때문이다.
      * <p>
-     * {@link SettlementException}이 아닌 실패(예상 못 한 오류)는 그대로 두고 상태만 넘긴다 —
-     * 그런 것까지 여기서 감싸면 원인이 한 겹 가려진다.
+     * ⚠️ <b>원인 사슬을 따라 내려가야 한다.</b> 리스너가 던진 예외는 그대로 목록에 담기지만,
+     * <b>스텝 안에서 난 예외는 Spring Batch가 한 겹 감싸서</b> 목록에 넣는다. 최상위 타입만
+     * 보면 원장 장애({@code ExternalServiceException})를 놓치고, 그러면
+     * <b>원장이 죽었는데 배치가 성공했다고 답한다.</b>
+     * <p>
+     * {@link SettlementException}이 사슬 어디에도 없는 실패(예상 못 한 오류)는 그대로 두고
+     * 상태만 넘긴다 — 그런 것까지 여기서 감싸면 원인이 한 겹 더 가려진다.
      *
      * @param execution 끝난 Job 실행
      */
@@ -134,13 +140,37 @@ public class SettlementJobRunner
         log.warn("정산 배치 실패 — jobExecutionId={}", execution.getId());
 
         execution.getAllFailureExceptions().stream()
-                .filter(SettlementException.class::isInstance)
-                .map(SettlementException.class::cast)
+                .map(SettlementJobRunner::settlementCauseOf)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .ifPresent(failure ->
                 {
                     throw failure;
                 });
+    }
+
+    /**
+     * 원인 사슬에서 우리가 의도적으로 던진 예외를 찾는다.
+     *
+     * @param failure Spring Batch가 기록한 실패. 감싸여 있을 수 있다
+     * @return 사슬에서 처음 만난 {@link SettlementException}. 없으면 {@code null}
+     */
+    private static SettlementException settlementCauseOf(Throwable failure)
+    {
+        Throwable current = failure;
+
+        while (current != null)
+        {
+            if (current instanceof SettlementException settlementException)
+            {
+                return settlementException;
+            }
+
+            Throwable cause = current.getCause();
+            current = cause == current ? null : cause;
+        }
+
+        return null;
     }
 
 }
