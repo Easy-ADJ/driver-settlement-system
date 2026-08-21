@@ -30,12 +30,14 @@
 
 | ID | 요구사항 | 상세 | 우선 | 출처 | 수락 기준 | 상태 |
 |---|---|---|---|---|---|---|
-| `FR-R-01` | 대사 검증 | 배치 종료 후, 원장상 기사 미지급금 합계와 정산 항목 합계가 일치하는지 자동 검증한다 | M | `SPEC §3.4`, `SET` | 원장 잔액과 정산 합계가 같으면 통과, 임의로 어긋나게 만들면 불일치로 판정된다 | 확정 |
-| `FR-R-02` | 원장 잔액은 API 경유 | 잔액은 원장 서버 `GET /api/ledger/accounts/{accountId}/balance`로 가져온다. `ledger_entries`를 직접 SUM하지 않는다 | M | `CTR §0`, `SET` | 정산 서버에 `ledger_entries`·`ledger_accounts`를 참조하는 SQL·엔티티가 없다 | 확정 |
-| `FR-R-03` | 불일치 통지 | 대사 불일치를 관리자가 인지할 수 있게 한다 | S | `SPEC §3.4`, `SET` | 🚧 통지 수단 확정 후 작성 | 🚧 U5 |
-| `FR-R-04` | 불일치 시 확정 보류 | 대사 실패 시 배치를 `CONFIRMED`로 올릴지 결정 | **M** | `SET`, `CTR §1` | 🚧 확정 후 작성 | 🚧 U6 |
+| `FR-R-01` | 대사 검증 | 배치 종료 후, **결제 서버의 전일 결제 합계**와 **원장 미지급금 합계**가 일치하는지 자동 검증한다 | M | `SPEC §3.4`, `SET` | 두 합계가 같으면 `MATCHED`, 임의로 어긋나게 만들면 `MISMATCHED`로 판정된다 | 확정 |
+| `FR-R-02` | 원장 잔액은 API 경유 | 잔액은 원장 서버 `GET /api/ledger/unpaid?date=`로 가져온다. `ledger_entries`를 직접 SUM하지 않는다 | M | `CTR §0`, `SET` | 정산 서버에 `ledger_entries`·`ledger_accounts`를 참조하는 SQL·엔티티가 없다 | 확정 |
+| `FR-R-03` | 불일치 통지 | **차이 금액을 담은 `log.error`** + 조회 API 응답의 `reconciliationStatus` | S | `SPEC §3.4`, `SET` | 불일치 시 결제 합계·원장 합계·차이가 로그에 남고, 조회 응답에 `MISMATCHED`가 나온다 | 확정 |
+| `FR-R-04` | 불일치 시 확정 보류 | `MATCHED`가 아니면 `CONFIRMED`로 올리지 않는다. `MISMATCHED`·`SKIPPED` 모두 보류 | **M** | `SET`, `CTR §1` | 대사가 `MATCHED`가 아니면 배치가 `RUNNING`에 머물고, 판정 결과가 저장된다 | 확정 |
 
-> **`FR-R-04`가 M인 이유**: 이 결정이 "대사 실패한 금액을 지급 대상으로 볼 것인가"를 정한다. 결정 전에는 [`FC-01`](../05-flow-chart/01-fc-01-batch-control-flow.md)·[`SD-03`](../04-sequence-diagram/03-sd-03-reconciliation.md)의 분기 하나를 그릴 수 없다.
+> **`FR-R-04`가 M인 이유**: 이 결정이 "대사 실패한 금액을 지급 대상으로 볼 것인가"를 정한다. **보류로 확정됐다** — 금액 출처가 원장 하나가 된 이상, 대사 불일치는 "계산은 맞는데 확인만 못 했다"가 아니라 **"집계에 쓴 입력 자체가 의심스럽다"** 는 뜻이기 때문이다.
+>
+> 보류된 배치를 사람이 푸는 경로는 `POST /api/settlements/{batchId}/confirm`이다 ([API 명세 다.](./03-api-specification.md)).
 
 ## 다. 조회 (`FR-Q-*`)
 
