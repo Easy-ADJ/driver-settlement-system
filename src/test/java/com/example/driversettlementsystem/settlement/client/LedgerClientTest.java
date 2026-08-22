@@ -210,10 +210,10 @@ class LedgerClientTest
 
     /**
      * <b>이 요청 형태가 이 이슈의 전부다.</b> 원장은 차변합 = 대변합을 검증하므로 한쪽만
-     * 보내면 거절되고, {@code entryType}이 {@code PAYOUT}이 아니면 결제 분개로 쌓여
+     * 보내면 거절되고, {@code entryType}이 {@code SETTLEMENT}가 아니면 결제 분개로 쌓여
      * <b>미지급금이 줄기는커녕 늘어난다.</b>
      */
-    @DisplayName("상쇄 분개는 차변·대변을 함께, PAYOUT 유형으로 보낸다")
+    @DisplayName("상쇄 분개는 차변·대변을 함께, SETTLEMENT 유형으로 보낸다")
     @Test
     void sendsBalancedPayoutEntry()
     {
@@ -222,7 +222,7 @@ class LedgerClientTest
                 .andExpect(header("Idempotency-Key", "settlement-7-1"))
                 .andExpect(jsonPath("$.idempotencyKey").value("settlement-7-1"))
                 .andExpect(jsonPath("$.driverId").value(1))
-                .andExpect(jsonPath("$.entryType").value("PAYOUT"))
+                .andExpect(jsonPath("$.entryType").value("SETTLEMENT"))
                 .andExpect(jsonPath("$.entries.length()").value(2))
                 .andExpect(jsonPath("$.entries[0].direction").value("DEBIT"))
                 .andExpect(jsonPath("$.entries[0].amount").value("42000"))

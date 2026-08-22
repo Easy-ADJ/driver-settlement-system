@@ -45,8 +45,13 @@ public class LedgerClient
     /** 지수 백오프 배수. */
     static final double BACKOFF_MULTIPLIER = 2.0;
 
-    /** 지급 상쇄 분개의 유형. 원장이 결제 분개({@code PAYMENT})와 구분하는 값이다. */
-    static final String PAYOUT_ENTRY_TYPE = "PAYOUT";
+    /**
+     * 지급 상쇄 분개의 유형. 원장이 결제 분개({@code PAYMENT})와 구분하는 값이다.
+     * <p>
+     * 값은 {@code erd.md}의 {@code LEDGER_ENTRIES.entry_type}과 {@code services/ledger.md}의
+     * 분개 유형 표를 따른다. 한때 {@code PAYOUT}으로 보냈으나 정본 문서에 맞춰 되돌렸다.
+     */
+    static final String SETTLEMENT_ENTRY_TYPE = "SETTLEMENT";
 
     /** 미지급금을 줄이는 방향. 결제가 대변으로 쌓았으니 상쇄는 차변이다. */
     static final String DEBIT = "DEBIT";
@@ -246,7 +251,7 @@ public class LedgerClient
      */
     private static PayoutEntryRequest payoutRequest(String idempotencyKey, Long driverId, BigDecimal fareTotal)
     {
-        return new PayoutEntryRequest(idempotencyKey, driverId, PAYOUT_ENTRY_TYPE, List.of(
+        return new PayoutEntryRequest(idempotencyKey, driverId, SETTLEMENT_ENTRY_TYPE, List.of(
                 new EntryDetail(DEBIT, fareTotal, null, DRIVER_OWNER),
                 new EntryDetail(CREDIT, fareTotal, null, PLATFORM_OWNER)));
     }
@@ -313,7 +318,7 @@ public class LedgerClient
      *
      * @param idempotencyKey 멱등 키. {@code Idempotency-Key} 헤더와 같은 값이다
      * @param driverId       기사 ID
-     * @param entryType      분개 유형. 상쇄는 {@code PAYOUT}이다
+     * @param entryType      분개 유형. 상쇄는 {@code SETTLEMENT}다
      * @param entries        차변·대변 양쪽. 합이 같아야 원장이 받는다
      */
     private record PayoutEntryRequest(String idempotencyKey, Long driverId, String entryType,
