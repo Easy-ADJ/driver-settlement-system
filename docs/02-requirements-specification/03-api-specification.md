@@ -151,7 +151,7 @@
 {
   "idempotencyKey": "settlement-42-1",
   "driverId": 1,
-  "entryType": "PAYOUT",
+  "entryType": "SETTLEMENT",
   "entries": [
     { "direction": "DEBIT",  "amount": "42000", "paymentId": null, "ownerType": "DRIVER" },
     { "direction": "CREDIT", "amount": "42000", "paymentId": null, "ownerType": "PLATFORM" }
